@@ -1,6 +1,6 @@
 import * as React from "react"
-import { View, Text, TextInput, ScrollView, TouchableOpacity, Alert, StyleSheet, Picker } from "react-native"
-import * as Database from "../database"
+import { View, Text, TextInput, ScrollView, TouchableOpacity, Alert, StyleSheet } from "react-native"
+import { Picker } from "@expo/ui/community/picker"
 import { calculateScore } from "@/lib/calculateScore"
 
 interface AnswerKeyProps {
@@ -100,7 +100,7 @@ export const AnswerKey: React.FC<AnswerKeyProps> = ({
           }}
           keyboardType="numeric"
           placeholder="Ej: 5"
-          maxLength="3"
+          maxLength={3}
         />
       </View>
 
@@ -132,7 +132,7 @@ export const AnswerKey: React.FC<AnswerKeyProps> = ({
                     setState({ ...state, weights: newWeights })
                   }}
                   keyboardType="numeric"
-                  maxLength="3"
+                  maxLength={3}
                 />
               </View>
             ))}
@@ -153,7 +153,7 @@ export const AnswerKey: React.FC<AnswerKeyProps> = ({
                 setState({ ...state, weights: [newWeight] })
               }}
               keyboardType="numeric"
-              maxLength="3"
+              maxLength={3}
             />
             <Text style={styles.weightNote}>
               (Todas las preguntas tendrán este mismo peso)
@@ -181,7 +181,7 @@ export const AnswerKey: React.FC<AnswerKeyProps> = ({
                   ),
                 })
               }
-              style={styles.picker smaller}
+              style={[styles.picker, styles.pickerSmaller]}
             >
               <Picker.Item label="A" value="A" />
               <Picker.Item label="B" value="B" />
@@ -225,6 +225,11 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     marginBottom: 8,
     color: "#4a5568",
+  },
+  sectionHint: {
+    fontSize: 12,
+    color: "#718096",
+    marginTop: 3,
   },
   weightToggle: {
     fontSize: 14,
@@ -294,7 +299,7 @@ const styles = StyleSheet.create({
     backgroundColor: "white",
     minHeight: 40,
   },
-  "picker smaller": {
+  pickerSmaller: {
     height: 30,
     minHeight: 30,
   },

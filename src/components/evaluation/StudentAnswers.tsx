@@ -1,7 +1,9 @@
 import * as React from "react"
-import { View, Text, ScrollView, TouchableOpacity, Alert, StyleSheet, Picker, Button } from "react-native"
+import { View, Text, TextInput, ScrollView, TouchableOpacity, Alert, StyleSheet, Button } from "react-native"
+import { Picker } from "@expo/ui/community/picker"
 import * as Database from "@/database"
 import { useNavigation } from "@react-navigation/native"
+import { importStudentsFromCSV } from "@/lib/importStudents"
 
 interface StudentAnswersProps {
   evaluationId: string
@@ -89,12 +91,12 @@ export const StudentAnswers: React.FC<StudentAnswersProps> = ({
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title>Seleccionar Estudiante y Respuestas</Text>
+      <Text style={styles.title}>Seleccionar Estudiante y Respuestas</Text>
 
       {/* Sección: Importar estudiantes */}
       {showImportModal && (
         <View style={styles.modalContainer}>
-          <Text style={styles.modalTitle>Importar estudiantes</Text>
+          <Text style={styles.modalTitle}>Importar estudiantes</Text>
           <TextInput
             style={styles.input}
             placeholder="Código, nombre (uno por línea o CSV)"
@@ -120,7 +122,7 @@ export const StudentAnswers: React.FC<StudentAnswersProps> = ({
 
       {/* Sección: Estudiantes existentes */}
       <View style={styles.studentsSection}>
-        <Text style={styles.sectionTitle>Estudiantes en esta evaluación</Text>
+        <Text style={styles.sectionTitle}>Estudiantes en esta evaluación</Text>
         {selectedStudent ? null : (
           <Button title="Añadir nuevo estudiante" onPress={() => setShowImportModal(true)} />
         )}
@@ -137,7 +139,7 @@ export const StudentAnswers: React.FC<StudentAnswersProps> = ({
       {/* Marcar respuestas */}
       {selectedStudent && (
         <View style={styles.answersSection}>
-          <Text style={styles.sectionTitle>Respuestas del estudiante</Text>
+          <Text style={styles.sectionTitle}>Respuestas del estudiante</Text>
           {Array.from({ length: 10 }, (_, i) => i + 1).map((questionNumber) => (
             <Picker
               key={questionNumber}
@@ -222,6 +224,12 @@ const styles = StyleSheet.create({
     padding: 10,
     backgroundColor: "#e2e8f0",
     borderRadius: 6,
+  },
+  studentName: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#2d3748",
+    marginBottom: 8,
   },
   answersSection: {
     marginTop: 20,

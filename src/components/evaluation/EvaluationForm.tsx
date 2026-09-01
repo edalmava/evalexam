@@ -1,5 +1,6 @@
 import * as React from "react"
-import { View, Text, TextInput, ScrollView, TouchableOpacity, Alert, StyleSheet, Picker, Switch } from "react-native"
+import { View, Text, TextInput, ScrollView, TouchableOpacity, Alert, StyleSheet, Switch } from "react-native"
+import { Picker } from "@expo/ui/community/picker"
 import * as Database from "../../database"
 
 interface EvaluationFormProps {
@@ -124,7 +125,7 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
         <TextInput
           style={styles.input}
           value={name}
-          onTextChange={({ text }) => setName(text)}
+          onChangeText={(text) => setName(text)}
           placeholder="Ej: Matemáticas Basicas"
         />
       </View>
@@ -134,7 +135,7 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
         <TextInput
           style={styles.input}
           value={date}
-          onTextChange={({ text }) => setDate(text)}
+          onChangeText={(text) => setDate(text)}
           placeholder="AAAA-MM-DD"
           keyboardType="numeric"
         />
@@ -159,7 +160,7 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
         <TextInput
           style={styles.input}
           value={totalQuestions.toString()}
-          onTextChange={({ text }) => setTotalQuestions(parseInt(text, 10))}
+          onChangeText={(text) => setTotalQuestions(parseInt(text, 10))}
           keyboardType="numeric"
           placeholder="Ej: 40"
         />
@@ -170,7 +171,7 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
         <TextInput
           style={styles.input}
           value={totalStudents.toString()}
-          onTextChange={({ text }) => setTotalStudents(parseInt(text, 10))}
+          onChangeText={(text) => setTotalStudents(parseInt(text, 10))}
           keyboardType="numeric"
           placeholder="Ej: 30"
         />
@@ -182,8 +183,8 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
           Igual peso para todas:{" "}
           <Switch
             value={questionWeights.length === 1 && questionWeights[0] === 1}
-            onValueChange={({ setValue }: any) => {
-              if (setValue) {
+            onValueChange={(newValue: boolean) => {
+              if (newValue) {
                 setQuestionWeights([1])
               }
             }}
@@ -191,8 +192,8 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
           Diferente por pregunta:{" "}
           <Switch
             value={questionWeights.length > 1}
-            onValueChange={({ setValue }: any) => {
-              if (setValue) {
+            onValueChange={(newValue: boolean) => {
+              if (newValue) {
                 setQuestionWeights(Array.from({ length: totalQuestions }, (_, i) => i + 1))
               }
             }}
@@ -209,13 +210,13 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
               <TextInput
                 style={styles.weightInput}
                 value={weight.toString()}
-                onTextChange={({ text }) => {
+                onChangeText={(text) => {
                   const newWeights = [...questionWeights]
                   newWeights[index] = parseInt(text, 10) || 1
                   setQuestionWeights(newWeights)
                 }}
                 keyboardType="numeric"
-                maxLength="3"
+                maxLength={3}
               />
             </View>
           ))}
@@ -240,7 +241,7 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
         <TextInput
           style={styles.input}
           value={maxScore.toString()}
-          onTextChange={({ text }) => setMaxScore(parseInt(text, 10) || 5)}
+          onChangeText={(text) => setMaxScore(parseInt(text, 10) || 5)}
           keyboardType="numeric"
           placeholder="Ej: 5"
         />

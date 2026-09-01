@@ -198,7 +198,7 @@ export const ExportExamScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title>Exportar Evaluación</Text>
+      <Text style={styles.title}>Exportar Evaluación</Text>
 
       <View style={styles.formGroup}>
         <Text style={styles.label}>ID de Evaluación:</Text>

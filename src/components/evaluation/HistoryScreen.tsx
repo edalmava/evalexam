@@ -76,8 +76,8 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
 
       {evaluations.length === 0 && !loading && (
         <View style={styles.emptyState}>
-          <Text style={styles.emptyText>No hay evaluaciones guardadas</Text>
-          <Text style={styles.emptySubText>Pruebe crear una evaluación primero</Text>
+          <Text style={styles.emptyText}>No hay evaluaciones guardadas</Text>
+          <Text style={styles.emptySubText}>Pruebe crear una evaluación primero</Text>
         </View>
       )}
     </View>

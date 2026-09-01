@@ -83,7 +83,7 @@ export const SummaryScreen: React.FC<SummaryScreenProps> = ({
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title>Resumen General</Text>
+      <Text style={styles.title}>Resumen General</Text>
 
       <View style={statsContainer}>
         <View style={statItem}>
