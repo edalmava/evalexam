@@ -1,7 +1,6 @@
 import * as React from "react"
-import { View, Text, ScrollView, TouchableOpacity, Alert, StyleSheet, FlatList, ActivityIndicator } from "react-native"
+import { View, Text, StyleSheet, ActivityIndicator, Button } from "react-native"
 import * as Database from "@/database"
-import { calculateScore } from "@/lib/calculateScore"
 
 interface StudentSummary {
   id: string
@@ -15,16 +14,51 @@ interface SummaryScreenProps {
   evaluationId: string
 }
 
+interface ScoreRange {
+  label: string
+  min: number
+  max: number
+}
+
+const buildScoreRanges = (maxScore: number, gradingSystem: string): ScoreRange[] => {
+  const minimum = gradingSystem === "1-to-max" ? 1 : 0
+  const span = Math.max(maxScore - minimum, 0.0001)
+  const bandCount = 5
+  const bandSize = span / bandCount
+
+  const ranges: ScoreRange[] = []
+  for (let i = 0; i < bandCount; i++) {
+    const bandMin = minimum + i * bandSize
+    const bandMax = i === bandCount - 1 ? maxScore : bandMin + bandSize
+    ranges.push({
+      label:
+        i === 0 && minimum === 0
+          ? `${bandMin.toFixed(2)} - ${bandMax.toFixed(2)}`
+          : `${bandMin.toFixed(2)} - ${bandMax.toFixed(2)}`,
+      min: bandMin,
+      max: bandMax,
+    })
+  }
+  return ranges
+}
+
 export const SummaryScreen: React.FC<SummaryScreenProps> = ({
   evaluationId,
 }) => {
   const [students, setStudents] = React.useState<StudentSummary[]>([])
+  const [evaluationMaxScore, setEvaluationMaxScore] = React.useState(5)
+  const [gradingSystem, setGradingSystem] = React.useState("0-to-max")
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
 
   React.useEffect(() => {
     const loadStudents = async () => {
       try {
+        const evaluation = await Database.selectEvaluation(evaluationId)
+        if (evaluation) {
+          setEvaluationMaxScore(Number(evaluation.maxScore))
+          setGradingSystem(String(evaluation.gradingSystem))
+        }
         const studentRecords = await Database.selectStudentsByEvaluation(evaluationId)
         setStudents(
           studentRecords.map((record: any) => ({
@@ -72,60 +106,57 @@ export const SummaryScreen: React.FC<SummaryScreenProps> = ({
   const maxScore = scores.length > 0 ? Math.max(...scores) : 0
   const minScore = scores.length > 0 ? Math.min(...scores) : 0
 
-  // Distribución por rangos
-  const distribution = {
-    "90-100": scores.filter((s) => s >= 90).length,
-    "80-89": scores.filter((s) => s >= 80 && s < 90).length,
-    "70-79": scores.filter((s) => s >= 70 && s < 80).length,
-    "60-69": scores.filter((s) => s >= 60 && s < 70).length,
-    "Below 60": scores.filter((s) => s < 60).length,
-  }
+  // Distribución por rangos derivados de la nota máxima configurable
+  const ranges = buildScoreRanges(evaluationMaxScore, gradingSystem)
+  const distribution = ranges.map((range) => ({
+    ...range,
+    count: scores.filter(
+      (s) => s >= range.min && (range.max === evaluationMaxScore ? s <= range.max : s < range.max)
+    ).length,
+  }))
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Resumen General</Text>
 
-      <View style={statsContainer}>
-        <View style={statItem}>
-          <Text style={statValue>{totalStudents}</Text>
-          <Text style={statLabel}>Estudiantes</Text>
+      <View style={styles.statsContainer}>
+        <View style={styles.statItem}>
+          <Text style={styles.statValue}>{totalStudents}</Text>
+          <Text style={styles.statLabel}>Estudiantes</Text>
         </View>
-        <View style={statItem}>
-          <Text style={statValue}>{averageScore.toFixed(2)}</Text>
-          <Text style={statLabel}>Promedio</Text>
+        <View style={styles.statItem}>
+          <Text style={styles.statValue}>{averageScore.toFixed(2)}</Text>
+          <Text style={styles.statLabel}>Promedio</Text>
         </View>
-        <View style={statItem}>
-          <Text style={statValue}>{maxScore}</Text>
-          <Text style={statLabel}>Máximo</Text>
+        <View style={styles.statItem}>
+          <Text style={styles.statValue}>{maxScore}</Text>
+          <Text style={styles.statLabel}>Máximo</Text>
         </View>
-        <View style={statItem}>
-          <Text style={statValue}>{minScore}</Text>
-          <Text style={statLabel}>Mínimo</Text>
+        <View style={styles.statItem}>
+          <Text style={styles.statValue}>{minScore}</Text>
+          <Text style={styles.statLabel}>Mínimo</Text>
         </View>
       </View>
 
-      <View style={distributionContainer}>
-        <Text style={distributionTitle>Distribución de Notas</Text>
-        {Object.entries(distribution).map(([range, count]) => (
-          <View key={range} style={distributionItem}>
-            <Text style={distributionRange}>{range}</Text>
-            <Text style={distributionCount}>{count} estudiantes</Text>
+      <View style={styles.distributionContainer}>
+        <Text style={styles.distributionTitle}>Distribución de Notas</Text>
+        {distribution.map((range) => (
+          <View key={range.label} style={styles.distributionItem}>
+            <Text style={styles.distributionRange}>{range.label}</Text>
+            <Text style={styles.distributionCount}>{range.count} estudiantes</Text>
           </View>
         ))}
       </View>
 
-      <FlatList
-        data={students}
-        renderItem={({ item }) => (
-          <View style={studentItem}>
-            <Text style={studentCode}>{item.code}</Text>
-            <Text style={studentName}>{item.name}</Text>
-            <Text style={studentScore}>Nota: {item.score}</Text>
+      <View style={styles.studentsContainer}>
+        {students.map((item) => (
+          <View key={item.id} style={styles.studentItem}>
+            <Text style={styles.studentCode}>{item.code}</Text>
+            <Text style={styles.studentName}>{item.name}</Text>
+            <Text style={styles.studentScore}>Nota: {item.score}</Text>
           </View>
-        )}
-        keyExtractor={(item) => item.id}
-        horizontal={false}
-      />
+        ))}
+      </View>
     </View>
   )
 }
@@ -176,6 +207,17 @@ const styles = StyleSheet.create({
     padding: 5,
     backgroundColor: "#e2e8f0",
     borderRadius: 4,
+  },
+  distributionRange: {
+    fontSize: 14,
+    color: "#2d3748",
+  },
+  distributionCount: {
+    fontSize: 14,
+    color: "#718096",
+  },
+  studentsContainer: {
+    marginBottom: 20,
   },
   studentItem: {
     padding: 10,

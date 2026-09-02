@@ -1,6 +1,8 @@
 import * as React from "react"
-import { View, Text, ScrollView, TouchableOpacity, Alert, StyleSheet, FlatList, TextInput, ActivityIndicator } from "react-native"
+import { View, Text, TouchableOpacity, StyleSheet, FlatList, TextInput, ActivityIndicator, Alert } from "react-native"
+import { useRouter } from "expo-router"
 import * as Database from "@/database"
+import { notifyEvaluationsChanged, useEvaluationsVersion } from "@/lib/evaluationsEvents"
 
 interface HistoryScreenProps {
   evaluationId?: string
@@ -9,9 +11,11 @@ interface HistoryScreenProps {
 export const HistoryScreen: React.FC<HistoryScreenProps> = ({
   evaluationId,
 }) => {
+  const router = useRouter()
   const [evaluations, setEvaluations] = React.useState([])
   const [searchText, setSearchText] = React.useState("")
   const [loading, setLoading] = React.useState(true)
+  const evaluationsVersion = useEvaluationsVersion()
 
   React.useEffect(() => {
     const loadEvaluations = async () => {
@@ -26,16 +30,38 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
     }
 
     loadEvaluations()
-  }, [evaluationId])
+  }, [evaluationId, evaluationsVersion])
 
-  const filteredEvaluations = evaluations.filter((eval) => {
+  const filteredEvaluations = evaluations.filter((item) => {
     if (!searchText) return true
-    return eval.name.toLowerCase().includes(searchText.toLowerCase())
+    return item.name.toLowerCase().includes(searchText.toLowerCase())
   })
 
   const handleEvaluationPress = (evalId: string) => {
-    // Navegar a la pantalla de detalles
-    Alert.alert("Evaluación", `Ver detalles de: ${evalId}`)
+    router.push({ pathname: "/history", params: { evaluationId: evalId } })
+  }
+
+  const handleDeleteEvaluation = (evalId: string, name: string) => {
+    Alert.alert(
+      "Eliminar evaluación",
+      `¿Desea eliminar la evaluación "${name}"? Se eliminarán también sus estudiantes y el historial asociado.`,
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Eliminar",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await Database.deleteEvaluation(evalId)
+              notifyEvaluationsChanged()
+            } catch (err) {
+              console.error("Error deleting evaluation:", err)
+              Alert.alert("Error", "No se pudo eliminar la evaluación")
+            }
+          },
+        },
+      ],
+    )
   }
 
   return (
@@ -51,24 +77,32 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
 
       {loading && (
         <View style={styles.loading}>
-          <ActivityIndicator size="medium" />
+          <ActivityIndicator size="large" />
         </View>
       )}
 
       <FlatList
         data={filteredEvaluations}
         renderItem={({ item }) => (
-          <TouchableOpacity
-            style={styles.evaluationItem}
-            onPress={() => handleEvaluationPress(item.id)}
-          >
-            <View style={styles.evaluationInfo}>
-              <Text style={styles.evaluationName}>{item.name}</Text>
-              <Text style={styles.evaluationDetails}>
-                {item.studentCount} estudiantes • {item.averageScore?.toFixed(2) || "0"} promedio
-              </Text>
-            </View>
-          </TouchableOpacity>
+          <View style={styles.evaluationItem}>
+            <TouchableOpacity
+              style={styles.evaluationBody}
+              onPress={() => handleEvaluationPress(item.id)}
+            >
+              <View style={styles.evaluationInfo}>
+                <Text style={styles.evaluationName}>{item.name}</Text>
+                <Text style={styles.evaluationDetails}>
+                  {item.studentCount} estudiantes • {item.averageScore?.toFixed(2) || "0"} promedio
+                </Text>
+              </View>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.deleteButton}
+              onPress={() => handleDeleteEvaluation(item.id, item.name)}
+            >
+              <Text style={styles.deleteButtonText}>Eliminar</Text>
+            </TouchableOpacity>
+          </View>
         )}
         keyExtractor={(item) => item.id}
         horizontal={false}
@@ -110,6 +144,24 @@ const styles = StyleSheet.create({
     padding: 15,
     borderRadius: 8,
     marginBottom: 10,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  evaluationBody: {
+    flex: 1,
+  },
+  deleteButton: {
+    marginLeft: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "#dc2626",
+  },
+  deleteButtonText: {
+    color: "#dc2626",
+    fontSize: 13,
+    fontWeight: "600",
   },
   evaluationInfo: {
     flexDirection: "row",

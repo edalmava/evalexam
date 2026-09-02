@@ -163,7 +163,7 @@ export function calculateScore(params: CalculateParams): CalculateResult {
  * Si el estudiante no responde ninguna, se asigna 0 a la suma.
  * 
  * @param correct - Número de respuestas que el estudiante sí marcó
- * @param totalQuestions - Número total de preguntas en el examen
+ * @param totalQuestions - Número total de preguntas en la evaluación
  * @returns Número de aciertos efectivos (respuestas en blanco quedan excluidos)
  * 
  * Caso límite (spec.md línea 52): "Comportamiento cuando un estudiante deja algunas respuestas en blanco: 

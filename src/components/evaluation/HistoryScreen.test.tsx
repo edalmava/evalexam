@@ -38,7 +38,7 @@ describe("HistoryScreen - RF-12 y RF-13", () => {
     expect(getByText("Ciencias Naturales")).toBeTruthy()
   })
 
-  it("debe mostrar exactamente los últimos 5 exámenes", () => {
+  it("debe mostrar exactamente los últimos 5 evaluaciones", () => {
     const { getAllByText } = render(<HistoryScreen />)
     // Debería mostrar 3 evaluaciones (las que están mockeadas)
     expect(getAllByText("Matemáticas Basicas").length).toBe(1)

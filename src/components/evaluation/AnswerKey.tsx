@@ -1,12 +1,17 @@
 import * as React from "react"
 import { View, Text, TextInput, ScrollView, TouchableOpacity, Alert, StyleSheet } from "react-native"
-import { Picker } from "@expo/ui/community/picker"
-import { calculateScore } from "@/lib/calculateScore"
+import { validateWeights, getDefaultWeight } from "@/lib/weightValidation"
 
 interface AnswerKeyProps {
   totalQuestions: number
   onSave: (key: AnswerKeyData) => void
   initialWeights?: number[]
+  initialGradingSystem?: "0-to-max" | "1-to-max"
+  initialMaxScore?: number
+  initialCorrectAnswers?: string[]
+  initialWeightMode?: "equal" | "different"
+  onChange?: (key: AnswerKeyData, weightMode: "equal" | "different") => void
+  submitLabel?: string
 }
 
 export interface AnswerKeyData {
@@ -20,6 +25,7 @@ export interface AnswerKeyFormState {
   correctAnswers: string[]
   currentWeight: number
   weights: number[]
+  weightMode: "equal" | "different"
   gradingSystem: "0-to-max" | "1-to-max"
   maxScore: number
 }
@@ -28,8 +34,15 @@ export const AnswerKey: React.FC<AnswerKeyProps> = ({
   totalQuestions,
   onSave,
   initialWeights,
+  initialGradingSystem,
+  initialMaxScore,
+  initialCorrectAnswers,
+  initialWeightMode,
+  onChange,
+  submitLabel = "Guardar Clave de Respuestas",
 }) => {
   const [state, setState] = React.useState<AnswerKeyFormState>(() => {
+    const hasPerQuestionWeights = initialWeights ? initialWeights.length > 1 : totalQuestions > 1
     const defaultWeights = initialWeights
       ? initialWeights
       : totalQuestions === 1
@@ -37,24 +50,37 @@ export const AnswerKey: React.FC<AnswerKeyProps> = ({
         : new Array(totalQuestions).fill(1)
 
     return {
-      correctAnswers: new Array(totalQuestions).fill("A"),
+      correctAnswers:
+        initialCorrectAnswers && initialCorrectAnswers.length === totalQuestions
+          ? [...initialCorrectAnswers]
+          : new Array(totalQuestions).fill("A"),
       currentWeight: 1,
       weights: [...defaultWeights],
-      gradingSystem: "0-to-max",
-      maxScore: 5,
+      weightMode: initialWeightMode || (hasPerQuestionWeights ? "different" : "equal"),
+      gradingSystem: initialGradingSystem || "0-to-max",
+      maxScore: initialMaxScore || 5,
     }
   })
 
-  const handleSave = () => {
-    const keyData: AnswerKeyData = {
+  const buildKeyData = React.useCallback((): AnswerKeyData => {
+    return {
       correctAnswers: state.correctAnswers,
-      weights: state.weights,
+      weights:
+        state.weightMode === "equal"
+          ? new Array(Math.max(totalQuestions, 1)).fill(state.weights[0] || 1)
+          : state.weights,
       maxScore: state.maxScore,
       gradingSystem: state.gradingSystem,
     }
+  }, [state, totalQuestions])
 
+  React.useEffect(() => {
+    onChange?.(buildKeyData(), state.weightMode)
+  }, [buildKeyData, onChange, state.weightMode])
+
+  const handleSave = () => {
     try {
-      onSave(keyData)
+      onSave(buildKeyData())
       Alert.alert("Éxito", "Clave de respuestas guardada correctamente")
     } catch (error) {
       Alert.alert("Error", "No se pudo guardar la clave: " + (error as Error).message)
@@ -71,16 +97,24 @@ export const AnswerKey: React.FC<AnswerKeyProps> = ({
       {/* Sistema de calificación */}
       <View style={styles.section}>
         <Text style={styles.sectionLabel}>Sistema de calificación</Text>
-        <Picker
-          selectedValue={state.gradingSystem}
-          onValueChange={(itemValue: string) =>
-            setState({ ...state, gradingSystem: itemValue as "0-to-max" | "1-to-max" })
-          }
-          style={styles.picker}
-        >
-          <Picker.Item label="Sistema 0 a nota máxima" value="0-to-max" />
-          <Picker.Item label="Sistema 1 a nota máxima" value="1-to-max" />
-        </Picker>
+        {(["0-to-max", "1-to-max"] as const).map((value) => {
+          const label = value === "0-to-max" ? "Sistema 0 a nota máxima" : "Sistema 1 a nota máxima"
+          const selected = value === state.gradingSystem
+          return (
+            <TouchableOpacity
+              key={value}
+              style={[styles.optionRow, selected && styles.optionRowSelected]}
+              onPress={() => setState({ ...state, gradingSystem: value })}
+            >
+              <Text style={[styles.optionText, selected && styles.optionTextSelected]}>
+                {label}
+              </Text>
+              <Text style={[styles.optionCheck, selected && styles.optionCheckVisible]}>
+                {selected ? "✓" : "○"}
+              </Text>
+            </TouchableOpacity>
+          )
+        })}
         <Text style={styles.sectionHint}>
           Nota máxima configurable (ej. 5, 10, 20, 100)
         </Text>
@@ -106,15 +140,41 @@ export const AnswerKey: React.FC<AnswerKeyProps> = ({
 
       {/* Configuración de pesos */}
       <View style={styles.section}>
-        <Text style={styles.sectionLabel}>
-          Peso de preguntas{" "}
-          <Text style={styles.weightToggle}>
-            <Text style={styles.weightToggleText}>{state.weights.length === 1 ? "Igual para todas" : "Diferente por pregunta"}</Text>
+        <Text style={styles.sectionLabel}>Peso de preguntas</Text>
+        <TouchableOpacity
+          style={[styles.optionRow, state.weightMode === "equal" && styles.optionRowSelected]}
+          onPress={() => setState({ ...state, weightMode: "equal", weights: [1] })}
+        >
+          <Text style={[styles.optionText, state.weightMode === "equal" && styles.optionTextSelected]}>
+            Igual peso para todas
           </Text>
-        </Text>
+          <Text style={[styles.optionCheck, state.weightMode === "equal" && styles.optionCheckVisible]}>
+            {state.weightMode === "equal" ? "✓" : "○"}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.optionRow, state.weightMode === "different" && styles.optionRowSelected]}
+          onPress={() => {
+            const baseWeight = getDefaultWeight(state.gradingSystem, state.maxScore, totalQuestions)
+            setState({
+              ...state,
+              weightMode: "different",
+              weights: Array.from({ length: totalQuestions > 0 ? totalQuestions : 1 }, () =>
+                baseWeight > 0 ? baseWeight : 1,
+              ),
+            })
+          }}
+        >
+          <Text style={[styles.optionText, state.weightMode === "different" && styles.optionTextSelected]}>
+            Diferente por pregunta
+          </Text>
+          <Text style={[styles.optionCheck, state.weightMode === "different" && styles.optionCheckVisible]}>
+            {state.weightMode === "different" ? "✓" : "○"}
+          </Text>
+        </TouchableOpacity>
 
         {/* Mostrar pesos individuales si son diferentes */}
-        {state.weights.length > 1 && (
+        {state.weightMode === "different" && (
           <View style={styles.weightsIndividual}>
             <Text style={styles.subLabel}>
               Asignar peso por pregunta (1 a {state.weights.length}):
@@ -126,21 +186,34 @@ export const AnswerKey: React.FC<AnswerKeyProps> = ({
                   style={styles.weightInput}
                   value={weight.toString()}
                   onChangeText={(text) => {
-                    const newWeight = parseInt(text, 10) || 1
+                    const newWeight = parseFloat(text)
                     const newWeights = [...state.weights]
-                    newWeights[index] = newWeight
+                    newWeights[index] = Number.isFinite(newWeight) && newWeight > 0 ? newWeight : 1
                     setState({ ...state, weights: newWeights })
                   }}
-                  keyboardType="numeric"
-                  maxLength={3}
+                  keyboardType="decimal-pad"
+                  maxLength={5}
                 />
               </View>
             ))}
+            {state.maxScore > 0 && (
+              <Text
+                style={[
+                  styles.weightValidation,
+                  validateWeights(state.weights, state.gradingSystem, state.maxScore).exceeds
+                    ? styles.weightValidationError
+                    : styles.weightValidationOk,
+                ]}
+              >
+                Peso total: {validateWeights(state.weights, state.gradingSystem, state.maxScore).totalWeight} de{" "}
+                {validateWeights(state.weights, state.gradingSystem, state.maxScore).limit} permitido
+              </Text>
+            )}
           </View>
         )}
 
         {/* Peso único si son iguales */}
-        {state.weights.length === 1 && (
+        {state.weightMode === "equal" && (
           <View style={styles.weightSingle}>
             <Text style={styles.subLabel}>
               Peso único para todas las preguntas:
@@ -171,29 +244,40 @@ export const AnswerKey: React.FC<AnswerKeyProps> = ({
             style={styles.answerRow}
           >
             <Text style={styles.questionLabel}>Pregunta {index + 1}:</Text>
-            <Picker
-              selectedValue={answer}
-              onValueChange={(itemValue: string) =>
-                setState({
-                  ...state,
-                  correctAnswers: state.correctAnswers.map((a, i) =>
-                    i === index ? itemValue : a,
-                  ),
-                })
-              }
-              style={[styles.picker, styles.pickerSmaller]}
-            >
-              <Picker.Item label="A" value="A" />
-              <Picker.Item label="B" value="B" />
-              <Picker.Item label="C" value="C" />
-              <Picker.Item label="D" value="D" />
-            </Picker>
+            <View style={styles.answerOptions}>
+              {(["A", "B", "C", "D"] as const).map((option) => {
+                const selected = option === answer
+                return (
+                  <TouchableOpacity
+                    key={option}
+                    style={[styles.answerOption, selected && styles.answerOptionSelected]}
+                    onPress={() =>
+                      setState({
+                        ...state,
+                        correctAnswers: state.correctAnswers.map((a, i) =>
+                          i === index ? option : a,
+                        ),
+                      })
+                    }
+                  >
+                    <Text
+                      style={[
+                        styles.answerOptionText,
+                        selected && styles.answerOptionTextSelected,
+                      ]}
+                    >
+                      {option}
+                    </Text>
+                  </TouchableOpacity>
+                )
+              })}
+            </View>
           </View>
         ))}
       </View>
 
       <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-        <Text style={styles.saveButtonText}>Guardar Clave de Respuestas</Text>
+        <Text style={styles.saveButtonText}>{submitLabel}</Text>
       </TouchableOpacity>
     </ScrollView>
   )
@@ -231,15 +315,6 @@ const styles = StyleSheet.create({
     color: "#718096",
     marginTop: 3,
   },
-  weightToggle: {
-    fontSize: 14,
-    color: "#718096",
-    marginBottom: 4,
-  },
-  weightToggleText: {
-    fontWeight: "600",
-    color: "#2d3748",
-  },
   input: {
     height: 40,
     borderWidth: 1,
@@ -252,14 +327,30 @@ const styles = StyleSheet.create({
     backgroundColor: "white",
   },
   weightInput: {
-    height: 30,
-    width: 50,
+    height: 34,
+    width: 58,
+    minWidth: 58,
     borderWidth: 1,
     borderColor: "#cbd5e0",
     borderRadius: 4,
-    paddingHorizontal: 5,
+    paddingHorizontal: 6,
+    paddingVertical: 0,
     textAlign: "center",
-    fontSize: 14,
+    textAlignVertical: "center",
+    fontSize: 16,
+    color: "#2d3748",
+    backgroundColor: "white",
+  },
+  weightValidation: {
+    fontSize: 13,
+    fontWeight: "600",
+    marginTop: 8,
+  },
+  weightValidationOk: {
+    color: "#2a9d6f",
+  },
+  weightValidationError: {
+    color: "#e53e3e",
   },
   weightSingle: {
     marginTop: 5,
@@ -288,20 +379,65 @@ const styles = StyleSheet.create({
     color: "#4a5568",
     marginRight: 8,
   },
-  picker: {
-    height: 40,
+  optionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    borderRadius: 6,
+    backgroundColor: "white",
+    marginBottom: 6,
+  },
+  optionRowSelected: {
+    borderColor: "#42b983",
+    borderWidth: 2,
+    backgroundColor: "#e6f7ef",
+  },
+  optionText: {
+    flex: 1,
+    fontSize: 15,
+    color: "#4a5568",
+  },
+  optionTextSelected: {
+    color: "#2a9d6f",
+    fontWeight: "600",
+  },
+  optionCheck: {
+    fontSize: 16,
+    color: "#cbd5e0",
+    marginLeft: 8,
+  },
+  optionCheckVisible: {
+    color: "#42b983",
+  },
+  answerOptions: {
+    flexDirection: "row",
+  },
+  answerOption: {
+    width: 40,
+    height: 36,
+    borderRadius: 6,
     borderWidth: 1,
     borderColor: "#cbd5e0",
-    borderRadius: 6,
-    paddingHorizontal: 8,
-    marginTop: 5,
-    marginBottom: 10,
     backgroundColor: "white",
-    minHeight: 40,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 8,
   },
-  pickerSmaller: {
-    height: 30,
-    minHeight: 30,
+  answerOptionSelected: {
+    borderColor: "#42b983",
+    backgroundColor: "#e6f7ef",
+  },
+  answerOptionText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#4a5568",
+  },
+  answerOptionTextSelected: {
+    color: "#2a9d6f",
   },
   questionLabel: {
     fontSize: 14,

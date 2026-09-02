@@ -21,7 +21,7 @@ describe("EvaluationForm RF-1 Tests", () => {
     expect(requiredFields).toHaveLength(7)
 
     // Verificar período académico por defecto son 4 valores
-    const periods: string[] = ["Primer Semestre", "Segundo Semestre", "Primer Cuatrimestre", "Segundo Cuatrimestre"]
+    const periods: string[] = ["Primer Período", "Segundo Período", "Tercer Período", "Cuarto Período"]
     expect(periods).toHaveLength(4)
 
     // Verificar que sistema de calificación sea configurable

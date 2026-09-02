@@ -1,8 +1,6 @@
 import * as React from "react"
-import { View, Text, ScrollView, TouchableOpacity, Alert, StyleSheet, Image, PermissionsAndroid, Platform } from "react-native"
+import { View, Text, StyleSheet, Alert, Image, TouchableOpacity } from "react-native"
 import * as ImagePicker from "expo-image-picker"
-import * as Permissions from "expo-permissions"
-import * as Filesystem from "expo-filesystem"
 
 interface StudentPhotoProps {
   studentId: string
@@ -18,22 +16,19 @@ export const StudentPhoto: React.FC<StudentPhotoProps> = ({
 
   // Solicitar permiso de cámara
   React.useEffect(() => {
-    if (Platform.OS === "android") {
-      PermissionsAndroid.requestPermissions([
-        PermissionsAndroid.PERMISSIONS.CAMERA,
-        PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
-      ]).then((granted) => {
-        setHasCameraPermission(granted.status === "granted")
-      })
-    } else {
-      setHasCameraPermission(true)
+    let active = true
+    ImagePicker.requestCameraPermissionsAsync().then((res) => {
+      if (active) setHasCameraPermission(res.granted)
+    })
+    return () => {
+      active = false
     }
   }, [])
 
   const pickImage = async () => {
-    // Solicitar permisos si es necesario
-    if (Platform.OS === "android" && !hasCameraPermission) {
-      Alert.alert("Permiso necesario", "La aplicación necesita permisos de cámara y galería")
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
+    if (!permission.granted) {
+      Alert.alert("Permiso necesario", "La aplicación necesita permisos de galería")
       return
     }
 
@@ -52,10 +47,12 @@ export const StudentPhoto: React.FC<StudentPhotoProps> = ({
   }
 
   const takePhoto = async () => {
-    // Solicitar permisos si es necesario
-    if (Platform.OS === "android" && !hasCameraPermission) {
-      Alert.alert("Permiso necesario", "La aplicación necesita permisos de cámara")
-      return
+    if (!hasCameraPermission) {
+      const permission = await ImagePicker.requestCameraPermissionsAsync()
+      if (!permission.granted) {
+        Alert.alert("Permiso necesario", "La aplicación necesita permisos de cámara")
+        return
+      }
     }
 
     const result = await ImagePicker.launchCameraAsync({
@@ -73,7 +70,7 @@ export const StudentPhoto: React.FC<StudentPhotoProps> = ({
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Foto del Examen (Evidencia)</Text>
+      <Text style={styles.title}>Foto de la Evaluación (Evidencia)</Text>
 
       <Text style={styles.subtitle}>
         {hasCameraPermission ? "Ya tiene permiso de cámara" : "Solicitando permiso..."}
@@ -104,7 +101,7 @@ export const StudentPhoto: React.FC<StudentPhotoProps> = ({
       {/* Nota sobre procesamiento automático */}
       <View style={styles.noteContainer}>
         <Text style={styles.noteText}>
-          <Text style={styles.noteBold}>Nota:</f> La foto se guarda como evidencia visual.
+          <Text style={styles.noteBold}>Nota:</Text> La foto se guarda como evidencia visual.
           El procesamiento automático de imágenes para calificación se postula para
           iteraciones posteriores al MVP (no procesado actualmente).
         </Text>

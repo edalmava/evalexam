@@ -18,7 +18,7 @@ beforeEach(() => {
 describe("StudentPhoto - RF-9", () => {
   it("debe renderizar el componente de foto RF-9", () => {
     const { getByText } = render(<StudentPhoto studentId="student-001" onPhotoSelected={() => {}} />)
-    expect(getByText("Foto del Examen (Evidencia)")).toBeTruthy()
+    expect(getByText("Foto de la Evaluación (Evidencia)")).toBeTruthy()
     expect(getByText("Tomar Foto")).toBeTruthy()
     expect(getByText("Seleccionar de Galería")).toBeTruthy()
   })
@@ -26,7 +26,7 @@ describe("StudentPhoto - RF-9", () => {
   it("debe solicitar permisos y seleccionar imagen", async () => {
     const { findByText } = render(<StudentPhoto studentId="student-001" onPhotoSelected={() => {}} />)
     // El componente debería mostrar el texto de permiso o botones
-    expect(findByText("Foto del Examen (Evidencia)")).toBeTruthy()
+    expect(findByText("Foto de la Evaluación (Evidencia)")).toBeTruthy()
   })
 
   it("debe llamar a onPhotoSelected cuando se selecciona una imagen", async () => {

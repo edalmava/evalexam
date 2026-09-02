@@ -1,180 +1,165 @@
 import * as React from "react"
-import { View, Text, Button, Alert, StyleSheet, AsyncStorage } from "react-native"
-import * as Document from "expo-document"
-import * as FileSystem from "expo-file-system"
+import {
+  View,
+  Text,
+  Button,
+  Alert,
+  StyleSheet,
+  ActivityIndicator,
+  ScrollView,
+} from "react-native"
+import * as Print from "expo-print"
+import * as Sharing from "expo-sharing"
+import { File, Paths, EncodingType } from "expo-file-system"
+import * as Database from "@/database"
 
 interface ExportExamProps {
   evaluationId: string
-  evaluationName: string
-  students: any[]
+  evaluationName?: string
 }
 
+interface JSONRow {
+  evaluation: Record<string, unknown>
+  students: Array<Record<string, unknown>>
+  exportedAt: string
+}
+
+const escapeHtml = (value: string): string =>
+  value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+
 export const exportExamToJSON = async (evaluationId: string): Promise<string> => {
-  try {
-    // Obtener datos de la evaluación
-    const evaluation = await Database.selectEvaluation(evaluationId)
-    if (!evaluation) {
-      throw new Error("Evaluación no encontrada")
-    }
-
-    // Obtener estudiantes
-    const students = await Database.selectStudentsByEvaluation(evaluationId)
-
-    // Formato JSON completo
-    const jsonData = {
-      evaluation: {
-        id: evaluation.id,
-        name: evaluation.name,
-        date: evaluation.date,
-        academicPeriod: evaluation.academicPeriod,
-        totalQuestions: evaluation.totalQuestions,
-        gradingSystem: evaluation.gradingSystem,
-        maxScore: evaluation.maxScore,
-        questionWeights: evaluation.questionWeights ? JSON.parse(evaluation.questionWeights) : [],
-        createdAt: evaluation.createdAt,
-      },
-      students: students.map((student) => ({
-        id: student.id,
-        code: student.code,
-        name: student.name,
-        answers: student.answers ? JSON.parse(student.answers) : [],
-        score: student.score,
-        photoPath: student.photoPath,
-      })),
-      exportedAt: new Date().toISOString(),
-    }
-
-    return JSON.stringify(jsonData, null, 2)
-  } catch (error) {
-    console.error("Error exporting to JSON:", error)
-    throw error
+  const evaluation = await Database.selectEvaluation(evaluationId)
+  if (!evaluation) {
+    throw new Error("Evaluación no encontrada")
   }
+
+  const students = await Database.selectStudentsByEvaluation(evaluationId)
+
+  const jsonData: JSONRow = {
+    evaluation: {
+      id: evaluation.id,
+      name: evaluation.name,
+      date: evaluation.date,
+      academicPeriod: evaluation.academicPeriod,
+      totalQuestions: evaluation.totalQuestions,
+      gradingSystem: evaluation.gradingSystem,
+      maxScore: evaluation.maxScore,
+      questionWeights: evaluation.questionWeights
+        ? JSON.parse(evaluation.questionWeights)
+        : [],
+      createdAt: evaluation.createdAt,
+    },
+    students: students.map((student: any) => ({
+      id: student.id,
+      code: student.code,
+      name: student.name,
+      answers: student.answers ? JSON.parse(student.answers) : [],
+      score: student.score,
+      photoPath: student.photoPath,
+    })),
+    exportedAt: new Date().toISOString(),
+  }
+
+  return JSON.stringify(jsonData, null, 2)
+}
+
+const buildEvaluationHtml = (evaluation: any, students: any[]): string => {
+  const rows = students
+    .map((student) => {
+      const answers = student.answers ? JSON.parse(student.answers) : []
+      return `
+        <tr>
+          <td>${escapeHtml(String(student.code))}</td>
+          <td>${escapeHtml(String(student.name))}</td>
+          <td>${escapeHtml(answers.join(", ") || "N/A")}</td>
+          <td style="text-align:center"><strong>${Number(student.score).toFixed(2)}</strong></td>
+        </tr>
+      `
+    })
+    .join("")
+
+  return `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="UTF-8" />
+        <style>
+          body { font-family: Helvetica, Arial, sans-serif; color: #2d3748; padding: 24px; }
+          h1 { text-align: center; font-size: 26px; margin-bottom: 4px; }
+          h2 { text-align: center; font-size: 18px; margin-top: 0; color: #718096; }
+          .meta { margin: 20px 0; font-size: 13px; line-height: 1.6; }
+          table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+          th, td { border: 1px solid #cbd5e0; padding: 8px; font-size: 12px; text-align: left; }
+          th { background-color: #e2e8f0; }
+          .section-title { font-size: 15px; font-weight: bold; margin-top: 24px; }
+        </style>
+      </head>
+      <body>
+        <h1>Evaluación ICFES</h1>
+        <h2>${escapeHtml(String(evaluation.name))}</h2>
+        <div class="meta">
+          <div><strong>Fecha:</strong> ${escapeHtml(String(evaluation.date))}</div>
+          <div><strong>Período:</strong> ${escapeHtml(String(evaluation.academicPeriod))}</div>
+          <div><strong>Preguntas:</strong> ${Number(evaluation.totalQuestions)}</div>
+          <div><strong>Sistema de calificación:</strong> ${escapeHtml(String(evaluation.gradingSystem))}</div>
+          <div><strong>Nota máxima:</strong> ${Number(evaluation.maxScore)}</div>
+        </div>
+        <div class="section-title">Resultados de estudiantes</div>
+        <table>
+          <thead>
+            <tr>
+              <th>Código</th>
+              <th>Nombre</th>
+              <th>Respuestas</th>
+              <th>Nota</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </body>
+    </html>
+  `
 }
 
 export const exportExamToPDF = async (evaluationId: string): Promise<string> => {
-  try {
-    // Obtener datos de la evaluación
-    const evaluation = await Database.selectEvaluation(evaluationId)
-    if (!evaluation) {
-      throw new Error("Evaluación no encontrada")
-    }
-
-    // Obtener estudiantes
-    const students = await Database.selectStudentsByEvaluation(evaluationId)
-
-    // Generar contenido PDF usando la API de expo-document
-    const pages: any[] = []
-
-    // Portada
-    pages.push({
-      type: "page",
-      content: [
-        {
-          type: "text",
-          text: "EVALUACIÓN ICFES",
-          style: { fontSize: 32, fontWeight: "bold", textAlign: "center" },
-        },
-        {
-          type: "text",
-          text: evaluation.name,
-          style: { fontSize: 24, textAlign: "center", marginTop: 10 },
-        },
-        {
-          type: "text",
-          text: `Fecha: ${evaluation.date}`,
-          style: { fontSize: 16, textAlign: "center", marginTop: 20 },
-        },
-      ],
-    })
-
-    // Información de la evaluación
-    pages.push({
-      type: "page",
-      content: [
-        {
-          type: "text",
-          text: "INFORMACIÓN DE LA EVALUACIÓN",
-          style: { fontSize: 18, fontWeight: "bold" },
-        },
-        {
-          type: "text", text: `Período: ${evaluation.academicPeriod}`, style: { marginTop: 5 },
-        },
-        {
-          type: "text", text: `Preguntas: ${evaluation.totalQuestions}`, style: { marginTop: 5 },
-        },
-        {
-          type: "text", text: `Sistema de calificación: ${evaluation.gradingSystem}`, style: { marginTop: 5 },
-        },
-        {
-          type: "text", text: `Nota máxima: ${evaluation.maxScore}`, style: { marginTop: 5 },
-        },
-      ],
-    })
-
-    // Resultados de estudiantes
-    pages.push({
-      type: "page",
-      content: [
-        {
-          type: "text",
-          text: "RESULTADOS DE ESTUDIANTES",
-          style: { fontSize: 18, fontWeight: "bold" },
-        },
-        { type: "spacer", height: 10 },
-      ],
-    })
-
-    students.forEach((student, index) => {
-      pages.push({
-        type: "page",
-        content: [
-          {
-            type: "text",
-            text: `Estudiante ${index + 1}: ${student.name} (${student.code})`,
-            style: { fontSize: 16, marginTop: 10 },
-          },
-          {
-            type: "text", text: `Respuestas: ${student.answers?.join(", ") || "N/A"}`, style: { marginTop: 5 },
-          },
-          {
-            type: "text", text: `Nota final: ${student.score}`, style: { marginTop: 5, fontWeight: "bold" },
-          },
-        ],
-      })
-    })
-
-    // Guardar PDF
-    const pdfUri = await Document.create(
-      {
-        pages,
-        title: `${evaluation.name}.pdf`,
-      },
-      Document.PermissionType.READ_WRITE,
-    )
-
-    return pdfUri
-  } catch (error) {
-    console.error("Error exporting to PDF:", error)
-    throw error
+  const evaluation = await Database.selectEvaluation(evaluationId)
+  if (!evaluation) {
+    throw new Error("Evaluación no encontrada")
   }
+
+  const students = await Database.selectStudentsByEvaluation(evaluationId)
+  const html = buildEvaluationHtml(evaluation, students)
+
+  const file = await Print.printToFileAsync({ html })
+  return file.uri
 }
 
-export const ExportExamScreen: React.FC = () => {
-  const [evaluationId, setEvaluationId] = React.useState("")
+export const ExportExamScreen: React.FC<ExportExamProps> = ({
+  evaluationId,
+  evaluationName,
+}) => {
   const [exporting, setExporting] = React.useState(false)
-  const [statusMessage, setStatusMessage] = React.useState("")
+  const [sharing, setSharing] = React.useState(false)
 
   const handleExportJSON = async () => {
     setExporting(true)
-    setStatusMessage("Generando JSON...")
     try {
       const jsonData = await exportExamToJSON(evaluationId)
-      // Guardar en AsyncStorage
-      await AsyncStorage.setItem("last_export_json", jsonData)
-      setStatusMessage("JSON guardado exitosamente")
-      Alert.alert("Éxito", "Archivo JSON generado y guardado")
+      const fileName = `${evaluationName || "evaluacion"}.json`.replace(/\s+/g, "_")
+      const file = new File(Paths.cache, fileName)
+      file.create()
+      file.write(jsonData, { encoding: EncodingType.UTF8 })
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(file.uri, { mimeType: "application/json" })
+      } else {
+        Alert.alert("Éxito", `JSON generado en: ${file.uri}`)
+      }
     } catch (error) {
-      setStatusMessage("Error al generar JSON")
+      console.error("Error exporting to JSON:", error)
       Alert.alert("Error", "No se pudo generar el archivo JSON")
     } finally {
       setExporting(false)
@@ -183,47 +168,71 @@ export const ExportExamScreen: React.FC = () => {
 
   const handleExportPDF = async () => {
     setExporting(true)
-    setStatusMessage("Generando PDF...")
     try {
       const pdfUri = await exportExamToPDF(evaluationId)
-      setStatusMessage("PDF generado exitosamente")
-      Alert.alert("Éxito", `PDF guardado en: ${pdfUri}`)
+      if (await Sharing.isAvailableAsync()) {
+        setSharing(true)
+        await Sharing.shareAsync(pdfUri, { mimeType: "application/pdf" })
+        setSharing(false)
+      } else {
+        Alert.alert("Éxito", `PDF generado en: ${pdfUri}`)
+      }
     } catch (error) {
-      setStatusMessage("Error al generar PDF")
+      console.error("Error exporting to PDF:", error)
       Alert.alert("Error", "No se pudo generar el PDF")
     } finally {
       setExporting(false)
+      setSharing(false)
     }
   }
 
+  const busy = exporting || sharing
+
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.title}>Exportar Evaluación</Text>
 
-      <View style={styles.formGroup}>
-        <Text style={styles.label}>ID de Evaluación:</Text>
-        <Text style={styles.value}>{evaluationId}</Text>
+      <View style={styles.infoBox}>
+        <Text style={styles.infoLabel}>Evaluación</Text>
+        <Text style={styles.infoValue}>{evaluationName || evaluationId}</Text>
       </View>
 
-      {exporting && (
+      {busy && (
         <View style={styles.exporting}>
-          <Text>{statusMessage}</Text>
+          <ActivityIndicator size="small" />
+          <Text style={styles.exportingText}>
+            {sharing ? "Compartiendo archivo..." : "Generando..."}
+          </Text>
         </View>
       )}
 
       <View style={styles.buttons}>
-        <Button title="Exportar a JSON" onPress={handleExportJSON} />
-        <Button title="Exportar a PDF" onPress={handleExportPDF} />
+        <View style={styles.buttonWrapper}>
+          <Button
+            title="Exportar a JSON"
+            onPress={handleExportJSON}
+            disabled={busy}
+          />
+        </View>
+        <View style={styles.buttonWrapper}>
+          <Button
+            title="Exportar a PDF"
+            onPress={handleExportPDF}
+            disabled={busy}
+          />
+        </View>
       </View>
-    </View>
+    </ScrollView>
   )
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
     backgroundColor: "#f5f5f5",
+  },
+  content: {
+    padding: 20,
   },
   title: {
     fontSize: 24,
@@ -232,28 +241,40 @@ const styles = StyleSheet.create({
     textAlign: "center",
     color: "#2d3748",
   },
-  formGroup: {
-    marginBottom: 15,
+  infoBox: {
+    backgroundColor: "white",
+    borderRadius: 8,
+    padding: 15,
+    marginBottom: 20,
   },
-  label: {
-    fontSize: 16,
-    color: "#4a5568",
-    marginBottom: 5,
+  infoLabel: {
+    fontSize: 12,
+    color: "#718096",
+    marginBottom: 4,
   },
-  value: {
+  infoValue: {
     fontSize: 16,
     color: "#2d3748",
-    marginTop: 5,
+  },
+  exporting: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 20,
+    padding: 10,
+    backgroundColor: "#e2e8f0",
+    borderRadius: 8,
+  },
+  exportingText: {
+    marginLeft: 10,
+    color: "#4a5568",
   },
   buttons: {
     flexDirection: "row",
-    justifyContent: "space-around",
-    marginTop: 20,
+    justifyContent: "space-between",
   },
-  exporting: {
-    margin: 20,
-    padding: 10,
-    backgroundColor: "#f3f4f6",
-    borderRadius: 8,
+  buttonWrapper: {
+    flex: 1,
+    marginHorizontal: 4,
   },
 })
