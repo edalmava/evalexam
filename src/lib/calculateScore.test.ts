@@ -89,6 +89,33 @@ describe("calculateScore - RF-2 a RF-5 (fórmulas configurables con maxScore)", 
       // 3 <= 5, entonces score = 3
       expect(result.score).toBe(3)
     })
+
+    it("con correctPerQuestion suma el peso de CADA pregunta acertada (no solo las primeras)", () => {
+      // Pesos [1, 2, 3]; el estudiante acierta las preguntas 0 y 2 (no la 1)
+      // Suma correcta = 1 + 3 = 4 (aunque correct = 2 no significa pesos[0]+pesos[1])
+      const result = calculateScore({
+        system: "0-to-max",
+        maxScore: 5,
+        totalQuestions: 3,
+        correct: 2,
+        correctPerQuestion: [true, false, true],
+        weights: [1, 2, 3],
+      })
+      expect(result.score).toBe(4)
+    })
+
+    it("con correctPerQuestion y aciertos en las primeras preguntas coincide con el respaldo", () => {
+      const result = calculateScore({
+        system: "0-to-max",
+        maxScore: 5,
+        totalQuestions: 3,
+        correct: 2,
+        correctPerQuestion: [true, true, false],
+        weights: [1, 2, 3],
+      })
+      // pesos[0] + pesos[1] = 1 + 2 = 3
+      expect(result.score).toBe(3)
+    })
   })
 
   describe("RF-4: Sistema 1 a maxScore, pesos iguales", () => {
@@ -180,6 +207,21 @@ describe("calculateScore - RF-2 a RF-5 (fórmulas configurables con maxScore)", 
         totalQuestions: 3,
         correct: 3,
         weights: [3, 3, 3],
+      })
+      expect(result.score).toBe(5)
+    })
+
+    it("con correctPerQuestion suma el peso de CADA pregunta acertada en sistema 1-a-max", () => {
+      // maxScore = 5, (maxScore - 1) = 4; pesos [1, 2, 3]
+      // El estudiante acierta las preguntas 0 y 2 → suma = 1 + 3 = 4
+      // 4 no > 4, entonces no reduce, +1 = 5
+      const result = calculateScore({
+        system: "1-to-max",
+        maxScore: 5,
+        totalQuestions: 3,
+        correct: 2,
+        correctPerQuestion: [true, false, true],
+        weights: [1, 2, 3],
       })
       expect(result.score).toBe(5)
     })

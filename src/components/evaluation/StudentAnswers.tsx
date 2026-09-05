@@ -8,6 +8,7 @@ interface StudentRecord {
   id: string
   code: string
   name: string
+  answers?: string
 }
 
 interface EvaluationMeta {
@@ -131,17 +132,18 @@ export const StudentAnswers: React.FC<StudentAnswersProps> = ({
   const liveScore = React.useMemo(() => {
     if (!evaluationMeta || evaluationMeta.correctAnswers.length !== totalQuestions) return null
     const correctAnswers = evaluationMeta.correctAnswers
-    let hits = 0
-    for (let i = 0; i < totalQuestions; i++) {
-      if (studentAnswers[i] === correctAnswers[i]) hits++
-    }
+    const correctPerQuestion = Array.from({ length: totalQuestions }, (_, i) =>
+      studentAnswers[i] === correctAnswers[i],
+    )
+    const correct = correctPerQuestion.filter(Boolean).length
     const useWeights =
       evaluationMeta.weights.length === totalQuestions ? evaluationMeta.weights : null
     return calculateScore({
       system: evaluationMeta.gradingSystem,
       maxScore: evaluationMeta.maxScore,
       totalQuestions,
-      correct: hits,
+      correct,
+      correctPerQuestion,
       weights: useWeights,
     }).score
   }, [evaluationMeta, studentAnswers, totalQuestions])
@@ -226,20 +228,27 @@ export const StudentAnswers: React.FC<StudentAnswersProps> = ({
       const hasKey = correctAnswers.length === totalQuestions
       let score = 0
       if (hasKey) {
-        let hits = 0
-        for (let i = 0; i < totalQuestions; i++) {
-          if (studentAnswers[i] === correctAnswers[i]) hits++
-        }
+        const correctPerQuestion = Array.from({ length: totalQuestions }, (_, i) =>
+          studentAnswers[i] === correctAnswers[i],
+        )
+        const correct = correctPerQuestion.filter(Boolean).length
         score = calculateScore({
           system: gradingSystem,
           maxScore,
           totalQuestions,
-          correct: hits,
+          correct,
+          correctPerQuestion,
           weights: useWeights,
         }).score
       }
 
       await Database.updateStudentAnswers(selectedStudent, studentAnswers, score)
+
+      setStudents((prev) =>
+        prev.map((s) =>
+          s.id === selectedStudent ? { ...s, answers: JSON.stringify(studentAnswers) } : s,
+        ),
+      )
 
       const student = {
         id: selectedStudent,
@@ -294,6 +303,7 @@ export const StudentAnswers: React.FC<StudentAnswersProps> = ({
           <>
             {students.map((student) => {
               const isSelected = student.id === selectedStudent
+              const hasSavedAnswers = (student.answers || "[]") !== "[]"
               return (
                 <TouchableOpacity
                   key={student.id}
@@ -305,6 +315,7 @@ export const StudentAnswers: React.FC<StudentAnswersProps> = ({
                   >
                     {student.code ? `${student.code} — ${student.name || "Sin nombre"}` : student.name}
                   </Text>
+                  {hasSavedAnswers && <Text style={styles.savedBadge}>Guardado</Text>}
                 </TouchableOpacity>
               )
             })}
@@ -433,14 +444,6 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     color: "#4a5568",
   },
-  studentRow: {
-    padding: 12,
-    borderWidth: 1,
-    borderColor: "#e2e8f0",
-    borderRadius: 6,
-    backgroundColor: "white",
-    marginBottom: 6,
-  },
   studentRowSelected: {
     borderColor: "#42b983",
     borderWidth: 2,
@@ -453,6 +456,28 @@ const styles = StyleSheet.create({
   studentRowTextSelected: {
     color: "#2a9d6f",
     fontWeight: "600",
+  },
+  studentRow: {
+    padding: 12,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    borderRadius: 6,
+    backgroundColor: "white",
+    marginBottom: 6,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  savedBadge: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#2a9d6f",
+    backgroundColor: "#e6f7ef",
+    borderRadius: 4,
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+    overflow: "hidden",
+    marginLeft: 8,
   },
   studentDetail: {
     marginBottom: 15,

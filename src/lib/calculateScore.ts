@@ -6,6 +6,13 @@ export interface CalculateParams {
   totalQuestions: number
   correct: number
   weights: number[] | null
+  /**
+   * Marcas de acierto por pregunta (opcional). Cuando hay pesos diferentes,
+   * es necesario saber QUÉ preguntas se acertaron para sumar el peso de cada
+   * una (RF-3/RF-5). Si se omite, se asume que las primeras `correct` preguntas
+   * son las acertadas (comportamiento heredado, usado solo como respaldo).
+   */
+  correctPerQuestion?: boolean[]
 }
 
 export interface CalculateResult {
@@ -33,7 +40,7 @@ export interface CalculateResult {
  * RF cubierta: RF-2, RF-3, RF-4, RF-5 (fórmulas configurables con maxScore configurable)
  */
 export function calculateScore(params: CalculateParams): CalculateResult {
-  const { system, maxScore, totalQuestions, correct, weights } = params
+  const { system, maxScore, totalQuestions, correct, weights, correctPerQuestion } = params
 
   // Validación de entradas
   if (maxScore <= 0) {
@@ -67,34 +74,31 @@ export function calculateScore(params: CalculateParams): CalculateResult {
 
   // CASO 2: Sistema 0 a maxScore con pesos diferentes
   if (system === "0-to-max" && weights !== null) {
-    // Fórmula: suma(peso_pregunta_i * acierto_i para cada pregunta)
+    // Fórmula (RF-3): suma(peso_pregunta_i) para cada pregunta ACERTADA
     // Si el total es mayor a maxScore, la nota final se queda en maxScore
-    let total = 0
-    // Asumimos que 'correct' cuenta aciertos y weights tienen los pesos correspondientes
-    // Para simplicidad, calculamos distribuyendo los correctos entre preguntas con peso
-    const weightedCorrect = weights.reduce((sum, weight, i) => {
-      // Cada pregunta acertada contribuye con su peso
-      return sum + weight
-    }, 0)
-    
-    // Nota: Si el estudiante acertó todas las preguntas, sumaríamos todos los pesos
-    // Si acertó 'correct' preguntas, distribuimos los weights de las preguntas acertadas
-    // Para el MVP, asumimos que weights son los pesos de las preguntas y 'correct' es el count
     let sumWeightsOfCorrect = 0
-    // Simulación: las primeras 'correct' preguntas tienen peso de weights
-    for (let i = 0; i < correct; i++) {
-      if (weights[i] !== undefined) {
-        sumWeightsOfCorrect += weights[i]
+    if (correctPerQuestion && correctPerQuestion.length === totalQuestions) {
+      for (let i = 0; i < totalQuestions; i++) {
+        const w = weights[i]
+        if (correctPerQuestion[i] && w !== undefined) {
+          sumWeightsOfCorrect += w
+        }
+      }
+    } else {
+      // Respaldo: las primeras `correct` preguntas se consideran acertadas
+      const anticipatedHits = Math.min(correct, totalQuestions)
+      for (let i = 0; i < anticipatedHits; i++) {
+        if (weights[i] !== undefined) {
+          sumWeightsOfCorrect += weights[i]
+        }
       }
     }
-    
+
     let score = sumWeightsOfCorrect
-    
-    // Si la suma pasa de maxScore, se queda en maxScore
     if (score > maxScore) {
       score = maxScore
     }
-    
+
     return {
       score: Math.round(score * 100) / 100,
       system,
@@ -126,9 +130,19 @@ export function calculateScore(params: CalculateParams): CalculateResult {
     // Finalmente, súmale uno a ese resultado
     
     let sumWeightsOfCorrect = 0
-    for (let i = 0; i < correct; i++) {
-      if (weights[i] !== undefined) {
-        sumWeightsOfCorrect += weights[i]
+    if (correctPerQuestion && correctPerQuestion.length === totalQuestions) {
+      for (let i = 0; i < totalQuestions; i++) {
+        const w = weights[i]
+        if (correctPerQuestion[i] && w !== undefined) {
+          sumWeightsOfCorrect += w
+        }
+      }
+    } else {
+      const anticipatedHits = Math.min(correct, totalQuestions)
+      for (let i = 0; i < anticipatedHits; i++) {
+        if (weights[i] !== undefined) {
+          sumWeightsOfCorrect += weights[i]
+        }
       }
     }
     

@@ -1,6 +1,5 @@
 import * as React from "react"
 import { View, Text, ScrollView, TouchableOpacity, Alert, StyleSheet } from "react-native"
-import { useRouter } from "expo-router"
 import { EvaluationForm } from "@/components/evaluation/EvaluationForm"
 import { AnswerKey, AnswerKeyData } from "@/components/evaluation/AnswerKey"
 import { StudentAnswers } from "@/components/evaluation/StudentAnswers"
@@ -25,7 +24,6 @@ interface EvaluationDraft {
 const STEPS = ["Configuración", "Clave de Respuestas", "Respuestas de Estudiantes", "Resumen"]
 
 export const EvaluationWizard: React.FC = () => {
-  const router = useRouter()
   const [step, setStep] = React.useState(0)
   const [evaluation, setEvaluation] = React.useState<EvaluationDraft | null>(null)
 
@@ -84,8 +82,9 @@ export const EvaluationWizard: React.FC = () => {
         averageScore,
       )
       notifyEvaluationsChanged()
+      setEvaluation(null)
+      setStep(0)
       Alert.alert("Éxito", "Evaluación guardada en el historial")
-      router.push("/history")
     } catch (error) {
       Alert.alert("Error", "No se pudo finalizar la evaluación: " + (error as Error).message)
     }
