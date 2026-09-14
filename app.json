@@ -17,7 +17,9 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": ["android.permission.RECORD_AUDIO"],
+      "package": "com.edalmava.evalexam"
     },
     "web": {
       "output": "static",
@@ -45,6 +47,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "4a945227-cfe5-4ef1-a01b-98121d67bd3a"
+      }
     }
   }
 }

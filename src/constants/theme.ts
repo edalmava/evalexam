@@ -1,6 +1,6 @@
 /**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
+ * Tokens de tema centralizados: colores (claro/oscuro), tipografía, espaciado y radios.
+ * Los componentes deben usar estos tokens en lugar de valores hardcodeados.
  */
 
 import '@/global.css';
@@ -14,6 +14,17 @@ export const Colors = {
     backgroundElement: '#F0F0F3',
     backgroundSelected: '#E0E1E6',
     textSecondary: '#60646C',
+    textStrong: '#2d3748',
+    textWeak: '#718096',
+    backgroundMuted: '#f5f5f5',
+    border: '#e2e8f0',
+    borderStrong: '#cbd5e0',
+    danger: '#dc2626',
+    dangerBackground: '#fef2f2',
+    success: '#2a9d6f',
+    successBackground: '#e6f7ef',
+    warning: '#b7791f',
+    warningBackground: '#fefcbf',
   },
   dark: {
     text: '#ffffff',
@@ -21,6 +32,17 @@ export const Colors = {
     backgroundElement: '#212225',
     backgroundSelected: '#2E3135',
     textSecondary: '#B0B4BA',
+    textStrong: '#f7fafc',
+    textWeak: '#a0aec0',
+    backgroundMuted: '#16181d',
+    border: '#2d3748',
+    borderStrong: '#4a5568',
+    danger: '#f87171',
+    dangerBackground: '#451a1a',
+    success: '#4ade80',
+    successBackground: '#0d2b1d',
+    warning: '#fbbf24',
+    warningBackground: '#3a2e0b',
   },
 } as const;
 
@@ -51,6 +73,15 @@ export const Fonts = Platform.select({
   },
 });
 
+export const FontSize = {
+  small: 12,
+  body: 14,
+  medium: 16,
+  large: 18,
+  title: 20,
+  huge: 24,
+} as const;
+
 export const Spacing = {
   half: 2,
   one: 4,
@@ -59,6 +90,13 @@ export const Spacing = {
   four: 24,
   five: 32,
   six: 64,
+} as const;
+
+export const Radius = {
+  sm: 6,
+  md: 8,
+  lg: 12,
+  pill: 999,
 } as const;
 
 export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;

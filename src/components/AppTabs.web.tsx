@@ -19,8 +19,8 @@ export default function AppTabs() {
       <TabSlot style={{ height: '100%' }} />
       <TabList asChild>
         <CustomTabList>
-          <TabTrigger name="dashboard" href="/" asChild>
-            <TabButton>Dashboard</TabButton>
+          <TabTrigger name="index" href="/" asChild>
+            <TabButton>Inicio</TabButton>
           </TabTrigger>
           <TabTrigger name="exams" href="/exams" asChild>
             <TabButton>Evaluaciones</TabButton>
@@ -42,7 +42,8 @@ export function TabButton({ children, isFocused, ...props }: TabTriggerSlotProps
     <Pressable {...props} style={({ pressed }) => pressed && styles.pressed}>
       <ThemedView
         type={isFocused ? 'backgroundSelected' : 'backgroundElement'}
-        style={styles.tabButtonView}>
+        style={styles.tabButtonView}
+      >
         <ThemedText type="small" themeColor={isFocused ? 'text' : 'textSecondary'}>
           {children}
         </ThemedText>

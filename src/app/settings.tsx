@@ -1,5 +1,5 @@
-import * as React from "react"
-import { View, Text, ScrollView, StyleSheet } from "react-native"
+import * as React from 'react';
+import { View, Text, ScrollView, StyleSheet } from 'react-native';
 
 export default function SettingsTabScreen() {
   return (
@@ -9,12 +9,11 @@ export default function SettingsTabScreen() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Información de la app</Text>
         <Text style={styles.sectionText}>
-          EvalExam permite calificar automáticamente evaluaciones tipo ICFES de
-          selección múltiple con única respuesta.
+          EvalExam permite calificar automáticamente evaluaciones tipo ICFES de selección múltiple
+          con única respuesta.
         </Text>
         <Text style={styles.sectionText}>
-          Los datos se almacenan localmente en el dispositivo y funcionan sin
-          conexión a Internet.
+          Los datos se almacenan localmente en el dispositivo y funcionan sin conexión a Internet.
         </Text>
       </View>
 
@@ -29,13 +28,13 @@ export default function SettingsTabScreen() {
         <Text style={styles.bullet}>• Historial de evaluaciones</Text>
       </View>
     </ScrollView>
-  )
+  );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
+    backgroundColor: '#f5f5f5',
   },
   content: {
     padding: 20,
@@ -43,33 +42,33 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 24,
-    fontWeight: "bold",
+    fontWeight: 'bold',
     marginBottom: 20,
-    textAlign: "center",
-    color: "#2d3748",
+    textAlign: 'center',
+    color: '#2d3748',
   },
   section: {
-    backgroundColor: "white",
+    backgroundColor: 'white',
     padding: 16,
     borderRadius: 8,
     marginBottom: 16,
   },
   sectionTitle: {
     fontSize: 16,
-    fontWeight: "bold",
-    color: "#2d3748",
+    fontWeight: 'bold',
+    color: '#2d3748',
     marginBottom: 8,
   },
   sectionText: {
     fontSize: 14,
-    color: "#4a5568",
+    color: '#4a5568',
     marginBottom: 6,
     lineHeight: 20,
   },
   bullet: {
     fontSize: 14,
-    color: "#4a5568",
+    color: '#4a5568',
     marginBottom: 4,
     lineHeight: 20,
   },
-})
+});

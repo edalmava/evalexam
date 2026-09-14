@@ -1,19 +1,19 @@
 export interface WeightValidationResult {
-  limit: number
-  totalWeight: number
-  exceeds: boolean
+  limit: number;
+  totalWeight: number;
+  exceeds: boolean;
 }
 
-export type GradingSystem = "0-to-max" | "1-to-max"
+export type GradingSystem = '0-to-max' | '1-to-max';
 
 export function getWeightLimit(system: GradingSystem, maxScore: number): number {
   if (maxScore <= 0) {
-    throw new Error("La nota máxima debe ser mayor a 0")
+    throw new Error('La nota máxima debe ser mayor a 0');
   }
-  if (system === "0-to-max") {
-    return maxScore
+  if (system === '0-to-max') {
+    return maxScore;
   }
-  return maxScore - 1
+  return maxScore - 1;
 }
 
 export function validateWeights(
@@ -21,12 +21,13 @@ export function validateWeights(
   system: GradingSystem,
   maxScore: number,
 ): WeightValidationResult {
-  const totalWeight = weights.reduce(
+  const rawTotal = weights.reduce(
     (sum, weight) => sum + (Number.isFinite(weight) ? weight : 0),
     0,
-  )
-  const limit = getWeightLimit(system, maxScore)
-  return { limit, totalWeight, exceeds: totalWeight > limit }
+  );
+  const limit = getWeightLimit(system, maxScore);
+  const totalWeight = Math.round(rawTotal * 100) / 100;
+  return { limit, totalWeight, exceeds: totalWeight > limit };
 }
 
 export function getDefaultWeight(
@@ -35,8 +36,8 @@ export function getDefaultWeight(
   totalQuestions: number,
 ): number {
   if (maxScore <= 0 || totalQuestions <= 0) {
-    return 1
+    return 1;
   }
-  const perQuestion = (maxScore - (system === "0-to-max" ? 0 : 1)) / totalQuestions
-  return Math.round(perQuestion * 100) / 100
+  const perQuestion = (maxScore - (system === '0-to-max' ? 0 : 1)) / totalQuestions;
+  return Math.round(perQuestion * 100) / 100;
 }

@@ -1,4 +1,5 @@
-import { Student } from "@/types"
+import { createId, createStudentCode } from '@/lib/ids';
+import { Student } from '@/types/index';
 
 /**
  * Importa estudiantes desde un string CSV con formato código_estudiante, nombre_estudiante
@@ -17,79 +18,79 @@ import { Student } from "@/types"
  * @throws Error si el formato es inválido
  */
 export function importStudentsFromCSV(csvString: string): Student[] {
-  if (!csvString || csvString.trim() === "") {
-    return []
+  if (!csvString || csvString.trim() === '') {
+    return [];
   }
 
-  const lines = csvString.split("\n")
-  const students: Student[] = []
-  const seenCodes = new Set<string>()
+  const lines = csvString.split('\n');
+  const students: Student[] = [];
+  const seenCodes = new Set<string>();
 
   for (const line of lines) {
-    const trimmedLine = line.trim()
-    if (trimmedLine === "") continue
+    const trimmedLine = line.trim();
+    if (trimmedLine === '') continue;
 
     // Intentar parsear como CSV: código, nombre
-    const commaIndex = trimmedLine.indexOf(",")
-    
+    const commaIndex = trimmedLine.indexOf(',');
+
     if (commaIndex > 0) {
       // Formato CSV: "codigo, nombre"
-      const code = trimmedLine.substring(0, commaIndex).trim()
-      const name = trimmedLine.substring(commaIndex + 1).trim()
+      const code = trimmedLine.substring(0, commaIndex).trim();
+      const name = trimmedLine.substring(commaIndex + 1).trim();
 
       if (!code) {
-        throw new Error(`Línea vacía o sin código: "${trimmedLine}"`)
+        throw new Error(`Línea vacía o sin código: "${trimmedLine}"`);
       }
 
       if (seenCodes.has(code)) {
-        throw new Error(`Código de estudiante duplicado: ${code}`)
+        throw new Error(`Código de estudiante duplicado: ${code}`);
       }
-      seenCodes.add(code)
+      seenCodes.add(code);
 
       students.push({
-        id: Math.random().toString(36).substr(2, 9),
+        id: createId(),
         code,
         name,
-      })
+      });
     } else {
       // Formato: un código por línea (solo el código, sin nombre)
       // O podría ser un nombre completo sin coma
       // Intentamos determinar si es solo código o nombre con espacios
       if (trimmedLine.match(/^[A-Z0-9]+$/i)) {
         // Parece un código (solo letras y números)
-        const code = trimmedLine.trim()
+        const code = trimmedLine.trim();
         if (!code || seenCodes.has(code)) {
-          throw new Error(`Código duplicado o vacío: "${code}"`)
+          throw new Error(`Código duplicado o vacío: "${code}"`);
         }
-        seenCodes.add(code)
+        seenCodes.add(code);
         students.push({
-          id: Math.random().toString(36).substr(2, 9),
+          id: createId(),
           code,
-          name: "", // Nombre vacío cuando solo hay código
-        })
+          name: '', // Nombre vacío cuando solo hay código
+        });
       } else {
         // Probablemente es un nombre sin coma
         // Tratamos como nombre de estudiante
-        const code = Math.random().toString(36).substr(2, 4).toUpperCase()
+        let code = createStudentCode();
         // Verificar duplicados generados
         while (seenCodes.has(code)) {
-          code = Math.random().toString(36).substr(2, 4).toUpperCase()
+          code = createStudentCode();
         }
-        seenCodes.add(code)
+        seenCodes.add(code);
         students.push({
-          id: Math.random().toString(36).substr(2, 9),
+          id: createId(),
           code,
           name: trimmedLine,
-        })
+        });
       }
     }
   }
 
   if (students.length === 0) {
-    throw new Error("No se pudieron parsear estudiantes del CSV proporcionado")
+    throw new Error('No se pudieron parsear estudiantes del CSV proporcionado');
   }
 
-  return students
+  return students;
 }
 
 /**
@@ -99,9 +100,7 @@ export function importStudentsFromCSV(csvString: string): Student[] {
  * @returns String CSV listo para guardar o exportar
  */
 export function exportStudentsToCSV(students: Student[]): string {
-  return students
-    .map((student) => `${student.code},${student.name}`)
-    .join("\n")
+  return students.map((student) => `${student.code},${student.name}`).join('\n');
 }
 
 /**
@@ -111,13 +110,13 @@ export function exportStudentsToCSV(students: Student[]): string {
  * @returns true si parece un CSV válido con códigos de estudiantes
  */
 export function isValidCSV(csvString: string): boolean {
-  if (!csvString || csvString.trim() === "") return false
-  
-  const lines = csvString.trim().split("\n")
+  if (!csvString || csvString.trim() === '') return false;
+
+  const lines = csvString.trim().split('\n');
   return lines.some((line) => {
-    const trimmed = line.trim()
-    return trimmed.includes(",") || (trimmed.length > 0 && trimmed.match(/^[A-Z0-9]+$/i))
-  })
+    const trimmed = line.trim();
+    return trimmed.includes(',') || (trimmed.length > 0 && trimmed.match(/^[A-Z0-9]+$/i));
+  });
 }
 
-export default importStudentsFromCSV
+export default importStudentsFromCSV;
