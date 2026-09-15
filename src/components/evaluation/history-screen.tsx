@@ -55,6 +55,8 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({ evaluationId }) =>
 
   return (
     <View style={[styles.container, { backgroundColor: colors.backgroundMuted }]}>
+      <Text style={[styles.title, { color: colors.textStrong }]}>Historial</Text>
+
       <View style={styles.searchContainer}>
         <TextInput
           placeholder="Buscar evaluación..."
@@ -136,6 +138,12 @@ const styles = StyleSheet.create({
   },
   searchContainer: {
     marginBottom: 15,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 20,
+    textAlign: 'center',
   },
   input: {
     height: 50,

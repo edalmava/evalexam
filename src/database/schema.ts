@@ -1,4 +1,4 @@
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 
 export const EVALUATIONS_SCHEMA = `
   CREATE TABLE IF NOT EXISTS evaluations (
@@ -26,6 +26,7 @@ export const STUDENTS_SCHEMA = `
     photoPath TEXT,
     answers TEXT NOT NULL,
     score REAL DEFAULT 0,
+    answersSource TEXT NOT NULL DEFAULT 'manual',
     createdAt TEXT NOT NULL
   );
 `;
@@ -41,9 +42,40 @@ export const HISTORY_SCHEMA = `
   );
 `;
 
-export const SCHEMA_STATEMENTS: string[] = [EVALUATIONS_SCHEMA, STUDENTS_SCHEMA, HISTORY_SCHEMA];
+export const SCAN_LOGS_SCHEMA = `
+  CREATE TABLE IF NOT EXISTS scan_logs (
+    id TEXT PRIMARY KEY,
+    evaluationId TEXT NOT NULL,
+    studentId TEXT,
+    status TEXT NOT NULL,
+    rawResponse TEXT,
+    errorMessage TEXT,
+    createdAt TEXT NOT NULL
+  );
+`;
+
+export const SCHEMA_STATEMENTS: string[] = [
+  EVALUATIONS_SCHEMA,
+  STUDENTS_SCHEMA,
+  HISTORY_SCHEMA,
+  SCAN_LOGS_SCHEMA,
+];
 
 export const EVALUATIONS_MIGRATIONS: string[] = [
   'ALTER TABLE evaluations ADD COLUMN totalStudents INTEGER NOT NULL DEFAULT 0',
   "ALTER TABLE evaluations ADD COLUMN correctAnswers TEXT NOT NULL DEFAULT '[]'",
+];
+
+export const STUDENTS_MIGRATIONS: string[] = [
+  "ALTER TABLE students ADD COLUMN answersSource TEXT NOT NULL DEFAULT 'manual'",
+];
+
+/**
+ * Runner generalizado de migraciones: cada entrada se aplica a su tabla de
+ * forma idempotente (PRAGMA table_info) usando el mismo patrón que antes solo
+ * recorría `evaluations`. SCHEMA_VERSION se bumpa cuando se añade una entrada.
+ */
+export const TABLE_MIGRATIONS: { table: string; migrations: string[] }[] = [
+  { table: 'evaluations', migrations: EVALUATIONS_MIGRATIONS },
+  { table: 'students', migrations: STUDENTS_MIGRATIONS },
 ];

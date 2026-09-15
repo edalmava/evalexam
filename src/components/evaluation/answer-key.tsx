@@ -233,8 +233,10 @@ export const AnswerKey: React.FC<AnswerKeyProps> = ({
                     key={option}
                     style={[
                       styles.answerOption,
-                      { borderColor: colors.borderStrong, backgroundColor: colors.background },
-                      selected && styles.answerOptionSelected,
+                      {
+                        borderColor: selected ? colors.success : colors.borderStrong,
+                        backgroundColor: selected ? colors.successBackground : colors.background,
+                      },
                     ]}
                     accessibilityRole="button"
                     accessibilityLabel={`Pregunta ${index + 1}, opción ${option}`}
@@ -248,7 +250,6 @@ export const AnswerKey: React.FC<AnswerKeyProps> = ({
                       style={[
                         styles.answerOptionText,
                         { color: selected ? colors.success : colors.textSecondary },
-                        selected && styles.answerOptionTextSelected,
                       ]}
                     >
                       {option}
@@ -373,12 +374,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 8,
   },
-  answerOptionSelected: {},
   answerOptionText: {
     fontSize: 16,
     fontWeight: '600',
   },
-  answerOptionTextSelected: {},
   questionLabel: {
     fontSize: 14,
     marginBottom: 5,

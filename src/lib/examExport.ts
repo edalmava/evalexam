@@ -1,5 +1,6 @@
 import * as Print from 'expo-print';
 import * as Database from '@/database';
+import { buildDistribution } from '@/lib/scoreScale';
 
 interface JSONRow {
   evaluation: Record<string, unknown>;
@@ -62,6 +63,23 @@ export const buildEvaluationHtml = (
     })
     .join('');
 
+  const distribution = buildDistribution(
+    students.map((student) => Number(student.score) || 0),
+    String(evaluation.gradingSystem),
+    Number(evaluation.maxScore),
+  );
+  const distributionRows = distribution
+    .map(
+      ({ band, count }) => `
+        <tr>
+          <td>${escapeHtml(band.label)}</td>
+          <td>${escapeHtml(band.rangeLabel)}</td>
+          <td style="text-align:center"><strong>${count}</strong></td>
+        </tr>
+      `,
+    )
+    .join('');
+
   return `
     <!DOCTYPE html>
     <html>
@@ -99,6 +117,17 @@ export const buildEvaluationHtml = (
             </tr>
           </thead>
           <tbody>${rows}</tbody>
+        </table>
+        <div class="section-title">Distribución de notas (Decreto 1290)</div>
+        <table>
+          <thead>
+            <tr>
+              <th>Desempeño</th>
+              <th>Rango</th>
+              <th>Estudiantes</th>
+            </tr>
+          </thead>
+          <tbody>${distributionRows}</tbody>
         </table>
       </body>
     </html>

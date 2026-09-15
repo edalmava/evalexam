@@ -42,6 +42,13 @@
           "photosPermission": "La aplicación usa fotos del examen como evidencia visual.",
           "cameraPermission": "La aplicación usa la cámara para capturar el examen como evidencia visual."
         }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "La aplicación usa la cámara para escanear la hoja de respuestas y calificar automáticamente.",
+          "microphonePermission": false
+        }
       ]
     ],
     "experiments": {

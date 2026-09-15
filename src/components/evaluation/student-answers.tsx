@@ -6,6 +6,7 @@ import { importStudentsFromCSV } from '@/lib/importStudents';
 import { buildStudentPlaceholders } from '@/lib/studentPlaceholders';
 import { calculateScore } from '@/lib/calculateScore';
 import { createId } from '@/lib/ids';
+import { ScanAnswerSheetModal, ScanEvaluationMeta } from './scan-answer-sheet-modal';
 
 interface EvaluationMeta {
   gradingSystem: '0-to-max' | '1-to-max';
@@ -36,6 +37,7 @@ export const StudentAnswers: React.FC<StudentAnswersProps> = ({
   const [newStudentName, setNewStudentName] = React.useState('');
   const [studentCode, setStudentCode] = React.useState('');
   const [studentName, setStudentName] = React.useState('');
+  const [showScanModal, setShowScanModal] = React.useState(false);
 
   const applyStudentsSelection = React.useCallback(
     (records: Database.StudentRow[], focusId?: string) => {
@@ -51,7 +53,7 @@ export const StudentAnswers: React.FC<StudentAnswersProps> = ({
       setStudentName(target.name);
       const saved = JSON.parse(target.answers || '[]') as string[];
       setStudentAnswers(
-        saved.length === totalQuestions ? saved : new Array(totalQuestions).fill('A'),
+        saved.length === totalQuestions ? saved : new Array(totalQuestions).fill(''),
       );
     },
     [totalQuestions],
@@ -136,7 +138,7 @@ export const StudentAnswers: React.FC<StudentAnswersProps> = ({
     setStudentAnswers(
       existingAnswers.length === totalQuestions
         ? existingAnswers
-        : new Array(totalQuestions).fill('A'),
+        : new Array(totalQuestions).fill(''),
     );
   };
 
@@ -289,6 +291,24 @@ export const StudentAnswers: React.FC<StudentAnswersProps> = ({
       Alert.alert('Error', 'No se pudieron guardar las respuestas: ' + (error as Error).message);
     }
   };
+
+  // Respuestas detectadas por el escaneo IA (RF-15..RF-21): actualiza el estado
+  // local y notifica como el flujo manual (misma ruta de cálculo de nota).
+  const handleScanSaved = React.useCallback(
+    (answers: string[]) => {
+      if (!selectedStudent) return;
+      setStudentAnswers(answers);
+      setStudents((prev) =>
+        prev.map((s) =>
+          s.id === selectedStudent
+            ? { ...s, answers: JSON.stringify(answers), answersSource: 'ai_scan' }
+            : s,
+        ),
+      );
+      onSave({ id: selectedStudent, code: studentCode, name: studentName, answers });
+    },
+    [selectedStudent, studentCode, studentName, onSave],
+  );
 
   return (
     <View style={[styles.container, { backgroundColor: colors.backgroundMuted }]}>
@@ -465,11 +485,18 @@ export const StudentAnswers: React.FC<StudentAnswersProps> = ({
             Respuestas del estudiante
           </Text>
           {Array.from({ length: totalQuestions }, (_, i) => i + 1).map((questionNumber) => {
-            const currentAnswer = studentAnswers[questionNumber - 1] || 'A';
+            const currentAnswer = studentAnswers[questionNumber - 1] ?? '';
+            const isMissing = currentAnswer === '';
             return (
               <View key={questionNumber} style={styles.answerRow}>
-                <Text style={[styles.questionLabel, { color: colors.textSecondary }]}>
-                  Pregunta {questionNumber}:
+                <Text
+                  style={[
+                    styles.questionLabel,
+                    { color: isMissing ? colors.warning : colors.textSecondary },
+                  ]}
+                >
+                  Pregunta {questionNumber}
+                  {isMissing ? ' — sin marcar' : ''}
                 </Text>
                 <View style={styles.answerOptions}>
                   {(['A', 'B', 'C', 'D'] as const).map((option) => {
@@ -479,8 +506,10 @@ export const StudentAnswers: React.FC<StudentAnswersProps> = ({
                         key={option}
                         style={[
                           styles.answerOption,
-                          { borderColor: colors.borderStrong, backgroundColor: colors.background },
-                          selected && styles.answerOptionSelected,
+                          {
+                            borderColor: selected ? colors.success : colors.borderStrong,
+                            backgroundColor: selected ? colors.successBackground : colors.background,
+                          },
                         ]}
                         accessibilityRole="button"
                         accessibilityLabel={`Pregunta ${questionNumber}, opción ${option}`}
@@ -488,7 +517,8 @@ export const StudentAnswers: React.FC<StudentAnswersProps> = ({
                         hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
                         onPress={() => {
                           const newAnswers = [...studentAnswers];
-                          newAnswers[questionNumber - 1] = option;
+                          newAnswers[questionNumber - 1] =
+                            option === currentAnswer ? '' : option;
                           setStudentAnswers(newAnswers);
                         }}
                       >
@@ -496,7 +526,6 @@ export const StudentAnswers: React.FC<StudentAnswersProps> = ({
                           style={[
                             styles.answerOptionText,
                             { color: selected ? colors.success : colors.textSecondary },
-                            selected && styles.answerOptionTextSelected,
                           ]}
                         >
                           {option}
@@ -511,6 +540,23 @@ export const StudentAnswers: React.FC<StudentAnswersProps> = ({
         </View>
       )}
 
+      {/* Escaneo por IA: botón junto al marcado manual (RF-15) */}
+      {selectedStudent && (
+        <TouchableOpacity
+          style={[
+            styles.scanButton,
+            { borderColor: colors.borderStrong, backgroundColor: colors.background },
+          ]}
+          onPress={() => setShowScanModal(true)}
+          accessibilityRole="button"
+          accessibilityLabel="Escanear hoja de respuestas"
+        >
+          <Text style={[styles.scanButtonText, { color: colors.textStrong }]}>
+            Escanear hoja de respuestas
+          </Text>
+        </TouchableOpacity>
+      )}
+
       <TouchableOpacity
         style={[styles.saveButton, { backgroundColor: colors.success }]}
         onPress={handleSaveAnswers}
@@ -519,6 +565,17 @@ export const StudentAnswers: React.FC<StudentAnswersProps> = ({
       >
         <Text style={styles.saveButtonText}>Guardar respuestas</Text>
       </TouchableOpacity>
+
+      {selectedStudent && evaluationMeta && showScanModal && (
+        <ScanAnswerSheetModal
+          onClose={() => setShowScanModal(false)}
+          evaluationId={evaluationId}
+          studentId={selectedStudent}
+          totalQuestions={totalQuestions}
+          evaluationMeta={evaluationMeta as ScanEvaluationMeta}
+          onSaved={handleScanSaved}
+        />
+      )}
     </View>
   );
 };
@@ -647,18 +704,28 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 8,
   },
-  answerOptionSelected: {},
   answerOptionText: {
     fontSize: 16,
     fontWeight: '600',
   },
-  answerOptionTextSelected: {},
   saveButton: {
     padding: 15,
     borderRadius: 8,
     alignItems: 'center',
     marginTop: 20,
     width: '100%',
+  },
+  scanButton: {
+    padding: 14,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: 'center',
+    marginTop: 16,
+    width: '100%',
+  },
+  scanButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
   saveButtonText: {
     color: 'white',

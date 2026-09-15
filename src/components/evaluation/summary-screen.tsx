@@ -2,6 +2,7 @@ import * as React from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, Button } from 'react-native';
 import { useTheme } from '@/hooks/use-theme';
 import * as Database from '@/database';
+import { buildDistribution, PerformanceTone } from '@/lib/scoreScale';
 
 interface StudentSummary {
   id: string;
@@ -15,32 +16,26 @@ interface SummaryScreenProps {
   evaluationId: string;
 }
 
-interface ScoreRange {
-  label: string;
-  min: number;
-  max: number;
-}
-
-const buildScoreRanges = (maxScore: number, gradingSystem: string): ScoreRange[] => {
-  const minimum = gradingSystem === '1-to-max' ? 1 : 0;
-  const span = Math.max(maxScore - minimum, 0.0001);
-  const bandCount = 5;
-  const bandSize = span / bandCount;
-
-  const ranges: ScoreRange[] = [];
-  for (let i = 0; i < bandCount; i++) {
-    const bandMin = minimum + i * bandSize;
-    const bandMax = i === bandCount - 1 ? maxScore : bandMin + bandSize;
-    ranges.push({
-      label:
-        i === 0 && minimum === 0
-          ? `${bandMin.toFixed(2)} - ${bandMax.toFixed(2)}`
-          : `${bandMin.toFixed(2)} - ${bandMax.toFixed(2)}`,
-      min: bandMin,
-      max: bandMax,
-    });
+const bandColor = (tone: PerformanceTone, colors: ReturnType<typeof useTheme>): string => {
+  switch (tone) {
+    case 'danger':
+      return colors.danger;
+    case 'warning':
+      return colors.warning;
+    default:
+      return colors.success;
   }
-  return ranges;
+};
+
+const bandBackground = (tone: PerformanceTone, colors: ReturnType<typeof useTheme>): string => {
+  switch (tone) {
+    case 'danger':
+      return colors.dangerBackground;
+    case 'warning':
+      return colors.warningBackground;
+    default:
+      return colors.successBackground;
+  }
 };
 
 export const SummaryScreen: React.FC<SummaryScreenProps> = ({ evaluationId }) => {
@@ -119,14 +114,8 @@ export const SummaryScreen: React.FC<SummaryScreenProps> = ({ evaluationId }) =>
   const maxScore = scores.length > 0 ? Math.max(...scores) : 0;
   const minScore = scores.length > 0 ? Math.min(...scores) : 0;
 
-  // Distribución por rangos derivados de la nota máxima configurable
-  const ranges = buildScoreRanges(evaluationMaxScore, gradingSystem);
-  const distribution = ranges.map((range) => ({
-    ...range,
-    count: scores.filter(
-      (s) => s >= range.min && (range.max === evaluationMaxScore ? s <= range.max : s < range.max),
-    ).length,
-  }));
+  // Distribución por desempeño según el Decreto 1290 (escala de referencia 0–5)
+  const distribution = buildDistribution(scores, gradingSystem, evaluationMaxScore);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.backgroundMuted }]}>
@@ -157,16 +146,23 @@ export const SummaryScreen: React.FC<SummaryScreenProps> = ({ evaluationId }) =>
         <Text style={[styles.distributionTitle, { color: colors.textStrong }]}>
           Distribución de Notas
         </Text>
-        {distribution.map((range) => (
+        <Text style={[styles.distributionSubtitle, { color: colors.textWeak }]}>
+          Escala de valoración — Decreto 1290 de 2009
+        </Text>
+        {distribution.map(({ band, count }) => (
           <View
-            key={range.label}
-            style={[styles.distributionItem, { backgroundColor: colors.border }]}
+            key={band.id}
+            style={[
+              styles.distributionItem,
+              { backgroundColor: bandBackground(band.tone, colors) },
+              { borderColor: bandColor(band.tone, colors) },
+            ]}
           >
-            <Text style={[styles.distributionRange, { color: colors.textStrong }]}>
-              {range.label}
+            <Text style={[styles.distributionRange, { color: bandColor(band.tone, colors) }]}>
+              {band.label}
             </Text>
             <Text style={[styles.distributionCount, { color: colors.textWeak }]}>
-              {range.count} estudiantes
+              {band.rangeLabel} • {count} estudiantes
             </Text>
           </View>
         ))}
@@ -219,12 +215,18 @@ const styles = StyleSheet.create({
   distributionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  distributionSubtitle: {
+    fontSize: 12,
     marginBottom: 10,
   },
   distributionItem: {
-    marginBottom: 5,
-    padding: 5,
-    borderRadius: 4,
+    marginBottom: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 6,
+    borderWidth: 1,
   },
   distributionRange: {
     fontSize: 14,

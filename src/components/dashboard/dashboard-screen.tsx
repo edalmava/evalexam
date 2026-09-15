@@ -101,7 +101,6 @@ export const DashboardScreen: React.FC = () => {
         style={[styles.container, { backgroundColor: colors.backgroundMuted }]}
         contentContainerStyle={styles.content}
       >
-        <Text style={[styles.title, { color: colors.textStrong }]}>Inicio</Text>
         <EmptyState onCreateExam={handleCreateExam} />
       </ScrollView>
     );
@@ -112,8 +111,6 @@ export const DashboardScreen: React.FC = () => {
       style={[styles.container, { backgroundColor: colors.backgroundMuted }]}
       contentContainerStyle={styles.content}
     >
-      <Text style={[styles.title, { color: colors.textStrong }]}>Inicio</Text>
-
       <DashboardStats stats={stats} />
 
       <TouchableOpacity
@@ -146,12 +143,6 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 20,
-    textAlign: 'center',
   },
   newExamButton: {
     padding: 15,

@@ -1,5 +1,5 @@
 import * as Database from 'expo-sqlite';
-import { SCHEMA_VERSION, SCHEMA_STATEMENTS, EVALUATIONS_MIGRATIONS } from './schema';
+import { SCHEMA_VERSION, SCHEMA_STATEMENTS, TABLE_MIGRATIONS } from './schema';
 
 const DATABASE_NAME = 'evalexam.db';
 
@@ -26,6 +26,17 @@ export interface StudentRow {
   photoPath: string | null;
   answers: string;
   score: number;
+  answersSource: string;
+  createdAt: string;
+}
+
+export interface ScanLogRow {
+  id: string;
+  evaluationId: string;
+  studentId: string | null;
+  status: 'success' | 'error';
+  rawResponse: string | null;
+  errorMessage: string | null;
   createdAt: string;
 }
 
@@ -64,13 +75,15 @@ export const createTables = async () => {
   await db.execAsync(SCHEMA_STATEMENTS.join('\n'));
 
   // Migraciones idempotentes para instalaciones previas sin columnas añadidas
-  for (const ddl of EVALUATIONS_MIGRATIONS) {
-    const column = ddl.match(/ADD COLUMN (\w+)/)?.[1];
-    if (!column) continue;
-    const rows = await db.getAllAsync<{ name?: string }>('PRAGMA table_info(evaluations)');
-    const exists = rows.some((row) => row.name === column);
-    if (!exists) {
-      await db.execAsync(ddl);
+  for (const { table, migrations } of TABLE_MIGRATIONS) {
+    for (const ddl of migrations) {
+      const column = ddl.match(/ADD COLUMN (\w+)/)?.[1];
+      if (!column) continue;
+      const rows = await db.getAllAsync<{ name?: string }>(`PRAGMA table_info(${table})`);
+      const exists = rows.some((row) => row.name === column);
+      if (!exists) {
+        await db.execAsync(ddl);
+      }
     }
   }
 
@@ -221,11 +234,17 @@ export const updateEvaluation = async (
   );
 };
 
-export const updateStudentAnswers = async (studentId: string, answers: string[], score: number) => {
+export const updateStudentAnswers = async (
+  studentId: string,
+  answers: string[],
+  score: number,
+  source: 'manual' | 'ai_scan' = 'manual',
+) => {
   const db = await getDatabase();
-  await db.runAsync('UPDATE students SET answers = ?, score = ? WHERE id = ?', [
+  await db.runAsync('UPDATE students SET answers = ?, score = ?, answersSource = ? WHERE id = ?', [
     JSON.stringify(answers),
     score,
+    source,
     studentId,
   ]);
 };
@@ -233,6 +252,31 @@ export const updateStudentAnswers = async (studentId: string, answers: string[],
 export const updateStudent = async (studentId: string, code: string, name: string) => {
   const db = await getDatabase();
   await db.runAsync('UPDATE students SET code = ?, name = ? WHERE id = ?', [code, name, studentId]);
+};
+
+export const insertScanLog = async (
+  id: string,
+  evaluationId: string,
+  studentId: string | null,
+  status: 'success' | 'error',
+  rawResponse: string | null,
+  errorMessage: string | null,
+) => {
+  const db = await getDatabase();
+  await db.runAsync(
+    `INSERT INTO scan_logs (id, evaluationId, studentId, status, rawResponse, errorMessage, createdAt)
+     VALUES (?, ?, ?, ?, ?, ?, datetime('now'))`,
+    [id, evaluationId, studentId, status, rawResponse, errorMessage],
+  );
+};
+
+export const selectScanLogsByStudent = async (studentId: string): Promise<ScanLogRow[]> => {
+  const db = await getDatabase();
+  const result = await db.getAllAsync<ScanLogRow>(
+    'SELECT * FROM scan_logs WHERE studentId = ? ORDER BY createdAt DESC',
+    [studentId],
+  );
+  return result;
 };
 
 export const countEvaluations = async (): Promise<number> => {

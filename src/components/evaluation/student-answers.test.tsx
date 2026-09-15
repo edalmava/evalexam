@@ -12,6 +12,7 @@ const mockStudent: Database.StudentRow = {
   photoPath: null,
   answers: '[]',
   score: 0,
+  answersSource: 'manual',
   createdAt: '2024-05-15T10:00:00.000Z',
 };
 

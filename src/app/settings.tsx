@@ -14,6 +14,7 @@ export default function SettingsTabScreen() {
         </Text>
         <Text style={styles.sectionText}>
           Los datos se almacenan localmente en el dispositivo y funcionan sin conexión a Internet.
+          El escaneo de hojas de respuestas con IA requiere conexión y un servidor local opcional.
         </Text>
       </View>
 
@@ -22,6 +23,7 @@ export default function SettingsTabScreen() {
         <Text style={styles.bullet}>• Configuración de evaluaciones</Text>
         <Text style={styles.bullet}>• Clave de respuestas</Text>
         <Text style={styles.bullet}>• Respuestas de estudiantes</Text>
+        <Text style={styles.bullet}>• Escaneo de hojas de respuestas por IA</Text>
         <Text style={styles.bullet}>• Foto de evidencia</Text>
         <Text style={styles.bullet}>• Resumen y estadísticas</Text>
         <Text style={styles.bullet}>• Exportación a PDF y JSON</Text>
