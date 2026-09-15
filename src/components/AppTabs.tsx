@@ -1,50 +1,52 @@
-import { NativeTabs } from 'expo-router/unstable-native-tabs';
-import { useColorScheme } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { Tabs } from 'expo-router';
+import { useColorScheme, type ColorValue } from 'react-native';
 
 import { Colors } from '@/constants/theme';
+
+type IoniconName = keyof typeof Ionicons.glyphMap;
+
+type TabIconProps = {
+  color: ColorValue;
+  size: number;
+  focused: boolean;
+};
+
+function tabIcon(icon: IoniconName) {
+  return function TabBarIcon({ color, size, focused }: TabIconProps) {
+    return (
+      <Ionicons
+        name={focused ? icon : (`${icon}-outline` as IoniconName)}
+        size={size}
+        color={color}
+      />
+    );
+  };
+}
 
 export default function AppTabs() {
   const scheme = useColorScheme();
   const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
 
   return (
-    <NativeTabs
-      backgroundColor={colors.background}
-      indicatorColor={colors.successBackground}
-      iconColor={{ default: colors.textSecondary, selected: colors.success }}
-      labelStyle={{ color: colors.textSecondary, fontWeight: '600' }}
+    <Tabs
+      screenOptions={{
+        headerShown: false,
+        tabBarActiveTintColor: colors.success,
+        tabBarInactiveTintColor: colors.textSecondary,
+        tabBarStyle: { backgroundColor: colors.background },
+      }}
     >
-      <NativeTabs.Trigger name="index">
-        <NativeTabs.Trigger.Label>Inicio</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon
-          sf={{ default: 'house', selected: 'house.fill' }}
-          md={{ default: 'home', selected: 'home_filled' }}
-        />
-      </NativeTabs.Trigger>
-
-      <NativeTabs.Trigger name="exams">
-        <NativeTabs.Trigger.Label>Evaluaciones</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon
-          sf={{ default: 'doc.text', selected: 'doc.text.fill' }}
-          md="quiz"
-        />
-      </NativeTabs.Trigger>
-
-      <NativeTabs.Trigger name="history">
-        <NativeTabs.Trigger.Label>Historial</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon
-          sf={{ default: 'clock.arrow.circlepath', selected: 'clock.fill' }}
-          md="history"
-        />
-      </NativeTabs.Trigger>
-
-      <NativeTabs.Trigger name="settings">
-        <NativeTabs.Trigger.Label>Configuración</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon
-          sf={{ default: 'gearshape', selected: 'gearshape.fill' }}
-          md="settings"
-        />
-      </NativeTabs.Trigger>
-    </NativeTabs>
+      <Tabs.Screen name="index" options={{ title: 'Inicio', tabBarIcon: tabIcon('home') }} />
+      <Tabs.Screen
+        name="exams"
+        options={{ title: 'Evaluaciones', tabBarIcon: tabIcon('document-text') }}
+      />
+      <Tabs.Screen name="history" options={{ title: 'Historial', tabBarIcon: tabIcon('time') }} />
+      <Tabs.Screen
+        name="settings"
+        options={{ title: 'Configuración', tabBarIcon: tabIcon('settings') }}
+      />
+    </Tabs>
   );
 }
